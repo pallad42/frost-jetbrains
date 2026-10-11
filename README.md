@@ -91,17 +91,25 @@ backgrounds and fights with Frost.
 </details>
 
 <details>
+<summary><b>Why is the Markdown preview not transparent?</b></summary>
+
+The preview is rendered by an embedded browser (JCEF) that paints its own opaque page background, which plugins
+cannot change. The Markdown source editor next to it is translucent as usual.
+</details>
+
+<details>
+<summary><b>The project colour gradient in the toolbar ends with a hard edge.</b></summary>
+
+With <kbd>Appearance</kbd> → <b>Use project colors in main toolbar</b>, the IDE paints that gradient partly from
+pre-rendered, fixed-size textures without transparency, so it cannot fade out into the glass. Turn the option off
+for a clean frosted toolbar.
+</details>
+
+<details>
 <summary><b>Scrolling feels slightly slower on a big maximised window.</b></summary>
 
 A translucent window has to be composited by macOS together with everything behind it, on every frame; the cost
 grows with the window size and the blur radius. Lowering <b>Blur radius</b> (or setting it to 0) helps the most.
-</details>
-
-<details>
-<summary><b>Why is there a thin dark outline around the window?</b></summary>
-
-That is the native macOS window border, drawn for every window in dark mode (Ghostty has it too). On an opaque window
-it blends in; on glass it shows.
 </details>
 
 ## How it works

@@ -34,6 +34,7 @@ import java.lang.invoke.MethodType
 import java.util.WeakHashMap
 import javax.swing.JComponent
 import javax.swing.JLayeredPane
+import javax.swing.JRootPane
 import javax.swing.UIManager
 
 /**
@@ -124,7 +125,15 @@ class GlassManager : Disposable {
             is ContainerEvent -> if (event.id == ContainerEvent.COMPONENT_ADDED) GlassStats.measure("componentAdded") { glassifyTree(event.child, config) }
             is WindowEvent -> if (event.id == WindowEvent.WINDOW_ACTIVATED) refreshNative(event.window, config)
             is ComponentEvent -> when (event.id) {
-                ComponentEvent.COMPONENT_SHOWN -> dropLoadingSnapshot(event.component)
+                ComponentEvent.COMPONENT_SHOWN -> {
+                    dropLoadingSnapshot(event.component)
+                    // Popups get the blur only once they are on screen; AppKit orders them in asynchronously,
+                    // so check again right after showing and a moment later.
+                    (event.component as? Window)?.let { window ->
+                        refreshNative(window, config)
+                        javax.swing.Timer(120) { active?.let { refreshNative(window, it) } }.apply { isRepeats = false }.start()
+                    }
+                }
                 // JBR may recreate the native layer on resize or when moving to another display.
                 ComponentEvent.COMPONENT_RESIZED, ComponentEvent.COMPONENT_MOVED ->
                     (event.component as? Window)?.let { refreshNative(it, config) }
@@ -139,9 +148,14 @@ class GlassManager : Disposable {
         EditorFactory.getInstance().addEditorFactoryListener(object : EditorFactoryListener {
             override fun editorCreated(event: EditorFactoryEvent) {
                 active?.let { GlassStats.measure("editorCreated") { GlassEditors.apply(event.editor, it) } }
-                // The terminal installs its own highlighter right after creating the editor.
+                // Owners finish setting the editor up right after creating it: the terminal installs its own
+                // highlighter, text fields (commit message, search) force their own solid background.
                 ApplicationManager.getApplication().invokeLater {
-                    active?.let { if (!event.editor.isDisposed) GlassTerminal.apply(event.editor, it) }
+                    active?.let {
+                        if (event.editor.isDisposed) return@let
+                        GlassTerminal.apply(event.editor, it)
+                        GlassEditors.keepBackgroundTranslucent(event.editor, it)
+                    }
                 }
             }
         }, this)
@@ -334,6 +348,9 @@ class GlassManager : Disposable {
      */
     private fun isOverlayRoot(component: JComponent): Boolean {
         val pane = component.parent as? JLayeredPane ?: return false
+        // Only the window's own layered pane: IntelliJ also uses layered panes for layout (e.g. the corner toolbar
+        // of documentation popups), and those children are part of the surface, not overlays.
+        if (pane.parent !is JRootPane) return false
         return pane.getLayer(component) >= JLayeredPane.PALETTE_LAYER
     }
 
