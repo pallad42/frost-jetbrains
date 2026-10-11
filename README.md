@@ -132,6 +132,12 @@ it blends in; on glass it shows.
 
 Requires the local IDE path in `gradle.properties` (`ideaPath`); Gradle provisions JDK 21 automatically.
 
+## Contributing
+
+Issues and pull requests are welcome. Found flicker, a part of the UI that stays solid, or something that looks off
+with your theme? Open an issue - a screenshot or a short screen recording helps a lot. Windows and Linux support
+would be a great contribution too.
+
 ## Credits
 
 Built with the help of Claude (Anthropic) - design, testing and the flicker hunting were a joint effort.
