@@ -46,6 +46,10 @@ Requires the local IDE path in `gradle.properties` (`ideaPath`); Gradle provisio
   itself opaque to Swing while its peer stays translucent; theme-change bursts are coalesced; native state is only
   re-sent when it really changed; loading-layer snapshots without alpha are skipped.
 
+## Credits
+
+Built with the help of Claude (Anthropic) - design, testing and the flicker hunting were a joint effort.
+
 ## License
 
 MIT - see [LICENSE](LICENSE).
