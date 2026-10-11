@@ -1,0 +1,44 @@
+<idea-plugin>
+    <id>com.github.pallad42.frost</id>
+    <name>Frost</name>
+    <vendor>pallad42</vendor>
+    <description><![CDATA[
+        <p>Translucent, blurred IDE windows - frosted glass for your IDE, like <code>background-opacity</code> and
+        <code>background-blur</code> in Ghostty.</p>
+        <ul>
+            <li>The whole UI is translucent: main window, tool windows, toolbars, status bar, popups, tooltips and dialogs.</li>
+            <li>Real window blur rendered by the system compositor, so it stays light on resources.</li>
+            <li>Coloured backgrounds (selection, current line, file colours, search results) stay visible, just translucent.</li>
+            <li>Live preview sliders: UI opacity, floating windows opacity, editor opacity, sticky lines opacity,
+                highlight opacity and blur radius, plus Reset to Defaults.</li>
+        </ul>
+        <p>Settings: <b>Settings | Appearance &amp; Behavior | Frost</b>. Quick toggle: <b>View | Frost</b>.</p>
+        <p><b>macOS only for now</b> - on Windows and Linux the plugin does nothing.
+        Turn off <b>Appearance | Background Image</b> while using Frost: the two effects fight each other.</p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationConfigurable parentId="appearance"
+                                 id="frost.settings"
+                                 displayName="Frost"
+                                 instance="com.github.pallad42.frost.GlassConfigurable"/>
+        <postStartupActivity implementation="com.github.pallad42.frost.GlassStartup"/>
+        <postStartupActivity implementation="com.github.pallad42.frost.FrostSelfTest"/>
+        <notificationGroup id="Frost" displayType="BALLOON"/>
+    </extensions>
+
+    <actions>
+        <action id="frost.Toggle" class="com.github.pallad42.frost.GlassToggleAction" text="Frost"
+                description="Toggle translucent, blurred IDE windows">
+            <add-to-group group-id="ViewMenu" anchor="last"/>
+        </action>
+    </actions>
+
+    <applicationListeners>
+        <listener class="com.github.pallad42.frost.GlassAppListener" topic="com.intellij.ide.AppLifecycleListener"/>
+        <listener class="com.github.pallad42.frost.GlassThemeListener" topic="com.intellij.ide.ui.LafManagerListener"/>
+        <listener class="com.github.pallad42.frost.GlassThemeListener" topic="com.intellij.openapi.editor.colors.EditorColorsListener"/>
+    </applicationListeners>
+</idea-plugin>
