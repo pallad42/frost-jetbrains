@@ -26,6 +26,7 @@
                                  instance="com.github.pallad42.frost.GlassConfigurable"/>
         <postStartupActivity implementation="com.github.pallad42.frost.GlassStartup"/>
         <postStartupActivity implementation="com.github.pallad42.frost.FrostSelfTest"/>
+        <postStartupActivity implementation="com.github.pallad42.frost.FrostPerfTest"/>
         <notificationGroup id="Frost" displayType="BALLOON"/>
     </extensions>
 

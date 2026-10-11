@@ -88,4 +88,6 @@ tasks.named<JavaExec>("runIde") {
     jvmArgs("-Didea.log.debug.categories=#com.github.pallad42.frost")
     // ./gradlew runIde -Pfrost.selftest: show every kind of overlay in turn (see FrostSelfTest).
     if (providers.gradleProperty("frost.selftest").isPresent) jvmArgs("-Dfrost.selftest=true")
+    // ./gradlew runIde -Pfrost.perftest: scroll a maximised editor with and without the effect (see FrostPerfTest).
+    if (providers.gradleProperty("frost.perftest").isPresent) jvmArgs("-Dfrost.perftest=true")
 }

@@ -102,6 +102,7 @@ class GlassManager : Disposable {
 
     /** Colours set directly on components, often after they are shown (documentation popups, banners...). */
     private val componentBackgroundListener = PropertyChangeListener { event ->
+        if (settingBackground) return@PropertyChangeListener
         val config = active ?: return@PropertyChangeListener
         (event.source as? JComponent)?.let { GlassStats.measure("backgroundChanged") { glassifyComponent(it, config) } }
     }
@@ -302,14 +303,29 @@ class GlassManager : Disposable {
         val overlayAlpha = Translucency.percentToAlpha(config.popupOpacity)
         when {
             bg is GlassColor -> when {
-                overlay && bg.paintAlpha < overlayAlpha -> component.background = GlassColor(bg.original, overlayAlpha, factor)
-                !overlay && bg.factor != factor -> component.background = Translucency.glass(bg.original, panelBackground(), factor)
+                overlay && bg.paintAlpha < overlayAlpha -> setBackground(component, GlassColor(bg.original, overlayAlpha, factor))
+                !overlay && bg.factor != factor -> setBackground(component, Translucency.glass(bg.original, panelBackground(), factor))
             }
             bg.alpha < 255 -> return
-            overlay -> component.background = GlassColor(bg, overlayAlpha, factor)
-            else -> component.background = Translucency.glass(bg, panelBackground(), factor)
+            overlay -> setBackground(component, GlassColor(bg, overlayAlpha, factor))
+            else -> setBackground(component, Translucency.glass(bg, panelBackground(), factor))
         }
     }
+
+    /**
+     * Our own change must not re-enter [glassifyComponent]: some components compute `getBackground()` instead of
+     * returning what was set, so reacting to our own event would loop forever.
+     */
+    private fun setBackground(component: JComponent, color: Color) {
+        settingBackground = true
+        try {
+            component.background = color
+        } finally {
+            settingBackground = false
+        }
+    }
+
+    private var settingBackground = false
 
     /**
      * Lightweight overlays - notifications, balloons, hints, in-window popups, also ones from other plugins with their
