@@ -162,8 +162,12 @@ class GlassManager : Disposable {
         apply(GlassSettings.getInstance().config)
     }
 
-    /** Applies [config] right away; used both for saved settings and for live preview from the settings page. */
-    fun apply(config: GlassConfig) {
+    /**
+     * Applies [config] right away; used both for saved settings and for live preview from the settings page.
+     * With [deferRecolour] (a slider still being dragged) only the cheap parts follow: window tint, blur,
+     * backgrounds already glassified and editors; the theme colours are recomputed by the next call without it.
+     */
+    fun apply(config: GlassConfig, deferRecolour: Boolean = false) {
         if (!started) return
         val previous = active
         if (!config.enabled) {
@@ -172,14 +176,15 @@ class GlassManager : Disposable {
         }
         active = config
         if (previous == null) disableSnapshotAnimations()
-        val coloursChanged = previous == null || previous.highlightOpacity != config.highlightOpacity ||
-            previous.popupOpacity != config.popupOpacity
+        val coloursChanged = !deferRecolour && overridesFor != config.highlightOpacity to config.popupOpacity
         if (coloursChanged) {
             installColorOverrides(config)
             refreshUi()
         }
         Window.getWindows().forEach { attach(it, config) }
-        if (coloursChanged || previous?.editorOpacity != config.editorOpacity || previous?.stickyLinesOpacity != config.stickyLinesOpacity) {
+        if (coloursChanged || previous == null || previous.highlightOpacity != config.highlightOpacity ||
+            previous.editorOpacity != config.editorOpacity || previous.stickyLinesOpacity != config.stickyLinesOpacity
+        ) {
             EditorFactory.getInstance().allEditors.forEach { GlassEditors.apply(it, config) }
         }
     }
@@ -206,6 +211,9 @@ class GlassManager : Disposable {
     }
 
     private var themeCheckPending = false
+
+    /** Highlight and floating windows opacity the theme colour overrides were installed with. */
+    private var overridesFor: Pair<Int, Int>? = null
     private var appliedThemeSignature: String? = null
 
     private fun themeSignature(): String {
@@ -218,6 +226,7 @@ class GlassManager : Disposable {
         registryOverrides?.let(Disposer::dispose)
         registryOverrides = null
         removeColorOverrides()
+        overridesFor = null
         for ((window, original) in windows.entries.toList()) {
             runCatching {
                 window.removePropertyChangeListener("background", windowBackgroundListener)
@@ -397,6 +406,7 @@ class GlassManager : Disposable {
 
     private fun installColorOverrides(config: GlassConfig) {
         appliedThemeSignature = themeSignature()
+        overridesFor = config.highlightOpacity to config.popupOpacity
         removeColorOverrides()
         val defaults = UIManager.getLookAndFeelDefaults()
         val base = panelBackground()
