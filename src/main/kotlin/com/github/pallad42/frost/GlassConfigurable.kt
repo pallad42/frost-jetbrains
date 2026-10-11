@@ -51,16 +51,21 @@ class GlassConfigurable : Configurable {
         }
         reset()
         enabled.addItemListener { preview() }
-        listOf(uiOpacity, popupOpacity, editorOpacity, stickyLinesOpacity, blurRadius).forEach { it.addChangeListener { preview() } }
-        // Recolouring the whole UI is expensive: preview it when the slider is released, not on every step.
-        highlightOpacity.addChangeListener { if (!highlightOpacity.valueIsAdjusting) preview() }
+        listOf(uiOpacity, popupOpacity, editorOpacity, stickyLinesOpacity, blurRadius, highlightOpacity).forEach { it.addChangeListener { preview() } }
         return content
     }
 
     private fun current() =
         GlassConfig(enabled.isSelected, uiOpacity.value, editorOpacity.value, blurRadius.value, highlightOpacity.value, popupOpacity.value, stickyLinesOpacity.value)
 
-    private fun preview() = GlassManager.getInstance().apply(current())
+    /**
+     * Recolouring the whole UI is expensive: while a slider that needs it is dragged, only the cheap parts follow
+     * and the theme colours catch up on release.
+     */
+    private fun preview() = GlassManager.getInstance().apply(
+        current(),
+        deferRecolour = popupOpacity.valueIsAdjusting || highlightOpacity.valueIsAdjusting,
+    )
 
     override fun isModified() = current() != GlassSettings.getInstance().config
 
