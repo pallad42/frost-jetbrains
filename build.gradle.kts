@@ -68,7 +68,7 @@ val installPlugin by tasks.registering(Sync::class) {
     val pluginZip = tasks.named<Zip>("buildPlugin").flatMap { it.archiveFile }
     dependsOn("buildPlugin")
     from(zipTree(pluginZip)) {
-        // The zip contains a top-level "intellij-glass/" folder; strip it.
+        // The zip contains a top-level "frost/" folder; strip it.
         eachFile { relativePath = RelativePath(true, *relativePath.segments.drop(1).toTypedArray()) }
         includeEmptyDirs = false
     }
