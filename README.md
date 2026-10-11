@@ -22,6 +22,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
 </p>
 
+<p align="center">
+  <img src="docs/frost-editor-dark.png" width="900" alt="IntelliJ IDEA with Frost: translucent, blurred editor, project tree and terminal over the desktop">
+</p>
+
 <!-- Demo recording goes here:
 <p align="center">
   <img src="docs/demo.gif" width="900" alt="Frost: plain IDE turning into frosted glass">
