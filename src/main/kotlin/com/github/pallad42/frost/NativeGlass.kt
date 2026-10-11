@@ -45,7 +45,9 @@ internal object NativeGlass {
             Foundation.invoke(nsWindow, "setBackgroundColor:", Foundation.invoke("NSColor", "clearColor"))
             val cgTint = setContentLayerTint(nsWindow, tint)
             setBlurRadius(nsWindow, blurRadius)
-            applied[key] = Applied(layer?.toLong() ?: 0L, cgTint, tint.rgb, blurRadius)
+            // Only remember windows that are really on screen; others get re-applied once they are shown.
+            if (isOnScreen(nsWindow)) applied[key] = Applied(layer?.toLong() ?: 0L, cgTint, tint.rgb, blurRadius)
+            else applied.remove(key)
             if (LOG.isDebugEnabled) LOG.debug("Frost: ${window.javaClass.simpleName} ${if (last == null) "glass applied" else "glass re-applied"} ${describe(nsWindow)}")
         }
     }
@@ -136,6 +138,9 @@ internal object NativeGlass {
         if (windowNumber <= 0) return
         blur.invokeInt(arrayOf(connection.invokeInt(emptyArray()), windowNumber, radius.coerceAtLeast(0)))
     }
+
+    /** A window that is not on screen yet has no window-server number: the blur cannot be set on it yet. */
+    private fun isOnScreen(nsWindow: ID) = Foundation.invoke(nsWindow, "windowNumber").toInt() > 0
 
     private fun cgFunction(name: String): Function? {
         for (path in LIBRARIES) {

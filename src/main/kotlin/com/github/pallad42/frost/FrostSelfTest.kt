@@ -2,12 +2,14 @@ package com.github.pallad42.frost
 
 import com.intellij.codeInsight.hint.HintManager
 import com.intellij.notification.NotificationGroupManager
+import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.startup.ProjectActivity
@@ -19,7 +21,12 @@ import com.intellij.ui.awt.RelativePoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.awt.Component
+import java.awt.Container
+import java.awt.Frame
 import java.awt.Point
+import java.awt.Window
+import javax.swing.JComponent
 
 /**
  * Development aid, off unless the IDE runs with `-Dfrost.selftest=true` (`./gradlew runIde -Pfrost.selftest`):
@@ -31,6 +38,7 @@ class FrostSelfTest : ProjectActivity {
     override suspend fun execute(project: Project) {
         if (System.getProperty("frost.selftest") != "true") return
         delay(STEP_MS * 3)
+        DumbService.getInstance(project).waitForSmartMode()  // quick documentation needs indexes
         val editor = withContext(Dispatchers.EDT) { openEditor(project) } ?: return
         val steps = listOf<Pair<String, () -> Unit>>(
             "notification balloon" to {
@@ -51,6 +59,8 @@ class FrostSelfTest : ProjectActivity {
                     .show(editor.contentComponent) { _, _ -> Point(300, 200) }
             },
             "message popup" to { JBPopupFactory.getInstance().createMessage("Message popup over the code").showInBestPositionFor(editor) },
+            "quick documentation" to { showQuickDoc(project) },
+            "dump popup windows" to { dumpPopupWindows() },
         )
         for ((name, show) in steps) {
             withContext(Dispatchers.EDT) {
@@ -61,6 +71,35 @@ class FrostSelfTest : ProjectActivity {
             delay(STEP_MS)
         }
         log.info("Frost selftest: done")
+    }
+
+    /** Quick Documentation for `Float` in GlassColor.kt, like hovering it. */
+    private fun showQuickDoc(project: Project) {
+        val file = project.guessProjectDir()?.findFileByRelativePath("src/main/kotlin/com/github/pallad42/frost/GlassColor.kt") ?: return
+        val text = String(file.contentsToByteArray())
+        val offset = text.indexOf("Float)").takeIf { it >= 0 } ?: return
+        val docEditor = FileEditorManager.getInstance(project).openTextEditor(OpenFileDescriptor(project, file, offset), true) ?: return
+        val action = ActionManager.getInstance().getAction("QuickJavaDoc") ?: return
+        ActionManager.getInstance().tryToExecute(action, null, docEditor.contentComponent, "frost-selftest", true)
+    }
+
+    /** Logs every visible popup window's component tree: class, own background (real alpha) and opacity. */
+    private fun dumpPopupWindows() {
+        for (window in Window.getWindows().filter { it.isShowing && it !is Frame }) {
+            val sb = StringBuilder("Frost selftest: window ${window.javaClass.name} ${window.width}x${window.height}\n")
+            fun walk(c: Component, depth: Int) {
+                val bg = if (c.isBackgroundSet) c.background else null
+                val alpha = (bg as? GlassColor)?.paintAlpha ?: bg?.alpha
+                sb.append("  ".repeat(depth)).append(c.javaClass.name.substringAfterLast('.'))
+                    .append(" ${c.width}x${c.height}")
+                    .append(if (bg != null) " bg=#%06x a=%d".format(bg.rgb and 0xffffff, alpha) else "")
+                    .append(if (c is JComponent && c.isOpaque) " opaque" else "")
+                    .append('\n')
+                if (c is Container) c.components.forEach { walk(it, depth + 1) }
+            }
+            walk(window, 0)
+            log.info(sb.toString())
+        }
     }
 
     private fun openEditor(project: Project): Editor? {

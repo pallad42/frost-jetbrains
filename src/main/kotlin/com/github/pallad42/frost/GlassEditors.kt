@@ -61,6 +61,13 @@ internal object GlassEditors {
         GlassTerminal.apply(ex, config)
     }
 
+    /** An owner (e.g. EditorTextField) replaced the background with a solid one: make that one translucent too. */
+    fun keepBackgroundTranslucent(editor: Editor, config: GlassConfig) {
+        val ex = editor as? EditorEx ?: return
+        val background = ex.backgroundColor
+        if (background.alpha == 255) ex.setBackgroundColor(Translucency.withAlphaPercent(background, config.editorOpacity))
+    }
+
     fun restore(editor: Editor) {
         val ex = editor as? EditorEx ?: return
         GlassTerminal.restore(ex)
