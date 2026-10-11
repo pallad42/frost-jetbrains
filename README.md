@@ -25,6 +25,9 @@
 <p align="center">
   <img src="docs/frost-editor-dark.png" width="900" alt="IntelliJ IDEA with Frost: translucent, blurred editor, project tree and terminal over the desktop">
 </p>
+<p align="center">
+  <sub>Wallpaper: <a href="https://unsplash.com/photos/aerial-photography-of-body-of-water-surrounded-by-trees-p8hnTQOyzfU">aerial photography of a body of water surrounded by trees</a> by Jeremy Bishop on Unsplash</sub>
+</p>
 
 <!-- Demo recording goes here:
 <p align="center">
