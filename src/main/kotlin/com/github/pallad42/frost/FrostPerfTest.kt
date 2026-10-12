@@ -7,7 +7,6 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
-import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.wm.WindowManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -16,15 +15,15 @@ import java.awt.GraphicsEnvironment
 import javax.swing.Timer
 
 /**
- * Development aid, off unless the IDE runs with `-Dfrost.perftest=true` (`./gradlew runIde -Pfrost.perftest`):
+ * Development aid, started by [GlassStartup] only when the IDE runs with `-Dfrost.perftest=true`
+ * (`./gradlew runIde -Pfrost.perftest`):
  * maximises the window and scrolls an editor in several configurations, logging how many scroll steps the EDT
  * managed in each phase. Combined with a screen recording this gives the real frame rate per configuration.
  */
-class FrostPerfTest : ProjectActivity {
+class FrostPerfTest {
     private val log = logger<FrostPerfTest>()
 
-    override suspend fun execute(project: Project) {
-        if (System.getProperty("frost.perftest") != "true") return
+    suspend fun run(project: Project) {
         delay(8000)
         val editor = withContext(Dispatchers.EDT) {
             WindowManager.getInstance().getFrame(project)?.bounds =

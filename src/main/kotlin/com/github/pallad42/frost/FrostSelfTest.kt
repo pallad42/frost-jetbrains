@@ -12,7 +12,6 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
-import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.ui.MessageType
 import com.intellij.openapi.ui.popup.Balloon
 import com.intellij.openapi.ui.popup.JBPopupFactory
@@ -29,14 +28,14 @@ import java.awt.Window
 import javax.swing.JComponent
 
 /**
- * Development aid, off unless the IDE runs with `-Dfrost.selftest=true` (`./gradlew runIde -Pfrost.selftest`):
+ * Development aid, started by [GlassStartup] only when the IDE runs with `-Dfrost.selftest=true`
+ * (`./gradlew runIde -Pfrost.selftest`):
  * shows every kind of overlay one after another, so a screen recording can check each of them.
  */
-class FrostSelfTest : ProjectActivity {
+class FrostSelfTest {
     private val log = logger<FrostSelfTest>()
 
-    override suspend fun execute(project: Project) {
-        if (System.getProperty("frost.selftest") != "true") return
+    suspend fun run(project: Project) {
         delay(STEP_MS * 3)
         DumbService.getInstance(project).waitForSmartMode()  // quick documentation needs indexes
         val editor = withContext(Dispatchers.EDT) { openEditor(project) } ?: return

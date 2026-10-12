@@ -4,18 +4,32 @@
     <vendor>pallad42</vendor>
     <description><![CDATA[
         <p>Translucent, blurred IDE windows - frosted glass for your IDE, like <code>background-opacity</code> and
-        <code>background-blur</code> in Ghostty.</p>
+        <code>background-blur</code> in Ghostty or the transparent, blurred windows of iTerm2, Warp and VS Code
+        vibrancy extensions. A transparent background with real blur, without a background image.</p>
         <ul>
-            <li>The whole UI is translucent: main window, tool windows, toolbars, status bar, popups, tooltips and dialogs.</li>
-            <li>Real window blur rendered by the system compositor, so it stays light on resources.</li>
-            <li>Coloured backgrounds (selection, current line, file colours, search results) stay visible, just translucent.</li>
+            <li>The whole UI is translucent: main window, editor, tool windows, terminal, toolbars, status bar,
+                popups, tooltips, notifications and dialogs.</li>
+            <li>Real window blur (frosted glass, acrylic-like) rendered by the macOS compositor, so it stays light on
+                resources.</li>
+            <li>Coloured backgrounds (selection, current line, file colours, search results) stay visible, just
+                translucent.</li>
+            <li>Works with any theme - dark or light, bundled or from a plugin.</li>
             <li>Live preview sliders: UI opacity, floating windows opacity, editor opacity, sticky lines opacity,
-                highlight opacity and blur radius, plus Reset to Defaults.</li>
+                highlight opacity, blur radius and floating windows blur radius, plus Reset to Defaults.</li>
         </ul>
         <p>Settings: <b>Settings | Appearance &amp; Behavior | Frost</b>. Quick toggle: <b>View | Frost</b>.</p>
         <p><b>macOS only for now</b> - on Windows and Linux the plugin does nothing.
         Turn off <b>Appearance | Background Image</b> while using Frost: the two effects fight each other.</p>
     ]]></description>
+
+    <change-notes><![CDATA[
+        <p><b>1.0.0</b> - first release.</p>
+        <ul>
+            <li>Translucent, blurred main window, popups and dialogs on macOS.</li>
+            <li>Separate opacity and blur for floating windows; editor, sticky lines and highlight opacity.</li>
+            <li>Live preview of every setting.</li>
+        </ul>
+    ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
 
@@ -25,8 +39,6 @@
                                  displayName="Frost"
                                  instance="com.github.pallad42.frost.GlassConfigurable"/>
         <postStartupActivity implementation="com.github.pallad42.frost.GlassStartup"/>
-        <postStartupActivity implementation="com.github.pallad42.frost.FrostSelfTest"/>
-        <postStartupActivity implementation="com.github.pallad42.frost.FrostPerfTest"/>
         <notificationGroup id="Frost" displayType="BALLOON"/>
     </extensions>
 
