@@ -4,8 +4,10 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.colors.ColorKey
 import com.intellij.openapi.editor.colors.EditorColors
 import com.intellij.openapi.editor.colors.EditorColorsManager
+import com.intellij.openapi.editor.colors.EditorColorsScheme
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.colors.impl.AbstractColorsScheme
+import com.intellij.openapi.editor.colors.impl.DelegateColorScheme
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.openapi.options.colors.ColorSettingsPages
@@ -18,13 +20,20 @@ import java.awt.Color
  * gutter, search results, highlighted usages...) goes through [Translucency.glass] against the editor background.
  */
 internal object GlassEditors {
+    /**
+     * What to put back on restore. Values the editor only inherited from the theme are not stored: after a theme
+     * switch they would bring back the previous theme's colours. [INHERITED_COLOR] and a `null` attribute mean
+     * "inherit again".
+     */
     private val ORIGINAL_COLORS = Key.create<Map<ColorKey, Color?>>("frost.originalColors")
-    private val ORIGINAL_ATTRIBUTES = Key.create<Map<TextAttributesKey, TextAttributes>>("frost.originalAttributes")
+    private val ORIGINAL_ATTRIBUTES = Key.create<Map<TextAttributesKey, TextAttributes?>>("frost.originalAttributes")
+    private val INHERITED_COLOR: Color = AbstractColorsScheme.INHERITED_COLOR_MARKER
 
     fun apply(editor: Editor, config: GlassConfig) {
         val ex = editor as? EditorEx ?: return
         restore(ex)
         val scheme = ex.colorsScheme
+        val theme = themeOf(scheme)
         val base = scheme.defaultBackground
         val factor = config.highlightOpacity / 100f
 
@@ -33,24 +42,24 @@ internal object GlassEditors {
             if (!isBackgroundKey(key.externalName)) continue
             val color = scheme.getColor(key) ?: continue
             if (color.alpha < 255) continue
-            colors[key] = color
+            colors[key] = if (theme != null && theme.getColor(key) == color) INHERITED_COLOR else color
             scheme.setColor(key, glass(color, base, factor, key.externalName))
         }
 
         // Overlays painted on top of scrolling text (sticky lines) cannot show the window blur, only what is under
         // them in the editor: give them an editor-coloured background of their own opacity.
         for (key in OVERLAY_KEYS) {
-            if (key !in colors) colors[key] = scheme.getColor(key)
+            if (key !in colors) colors[key] = scheme.getColor(key).let { if (theme != null && theme.getColor(key) == it) INHERITED_COLOR else it }
             scheme.setColor(key, Translucency.withAlphaPercent(base, config.stickyLinesOpacity))
         }
 
-        val attributes = HashMap<TextAttributesKey, TextAttributes>()
+        val attributes = HashMap<TextAttributesKey, TextAttributes?>()
         for (key in attributeKeys) {
             if (TextAttributesKey.isTemp(key)) continue
             val original = scheme.getAttributes(key) ?: continue
             val background = original.backgroundColor ?: continue
             if (background.alpha < 255) continue
-            attributes[key] = original
+            attributes[key] = if (theme != null && theme.getAttributes(key) == original) null else original
             scheme.setAttributes(key, original.clone().apply { backgroundColor = glass(background, base, factor, key.externalName) })
         }
 
@@ -60,6 +69,15 @@ internal object GlassEditors {
         ex.reinitSettings()
         GlassTerminal.apply(ex, config)
     }
+
+    /**
+     * The scheme an editor inherits from, when its scheme is the editor's own delegate: only that one keeps overrides
+     * per editor and can drop them again (other delegates would write through to the shared scheme).
+     */
+    private fun themeOf(scheme: EditorColorsScheme): EditorColorsScheme? =
+        (scheme as? DelegateColorScheme)?.takeIf { it.javaClass.name == EDITOR_SCHEME_DELEGATE }?.delegate
+
+    private const val EDITOR_SCHEME_DELEGATE = "com.intellij.openapi.editor.impl.EditorColorSchemeDelegate"
 
     /** An owner (e.g. EditorTextField) replaced the background with a solid one: make that one translucent too. */
     fun keepBackgroundTranslucent(editor: Editor, config: GlassConfig) {
@@ -75,8 +93,10 @@ internal object GlassEditors {
         val attributes = ex.getUserData(ORIGINAL_ATTRIBUTES)
         if (colors == null && attributes == null) return
         val scheme = ex.colorsScheme
+        val theme = themeOf(scheme)
         colors?.forEach { (key, color) -> scheme.setColor(key, color) }
-        attributes?.forEach { (key, value) -> scheme.setAttributes(key, value) }
+        // The scheme delegate cannot drop an attribute override: inherit by copying the current theme's value.
+        attributes?.forEach { (key, value) -> (value ?: theme?.getAttributes(key))?.let { scheme.setAttributes(key, it) } }
         ex.putUserData(ORIGINAL_COLORS, null)
         ex.putUserData(ORIGINAL_ATTRIBUTES, null)
         ex.setBackgroundColor(null)

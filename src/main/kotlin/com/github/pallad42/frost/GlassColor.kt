@@ -2,6 +2,7 @@ package com.github.pallad42.frost
 
 import java.awt.Color
 import javax.swing.plaf.ColorUIResource
+import kotlin.math.abs
 
 /**
  * A translucent replacement for an opaque colour: same RGB as [original], painted with `paintAlpha`, but it reports
@@ -46,9 +47,19 @@ internal object Translucency {
         // Neutral surfaces (panels, toolbars, popups, the area under the editor) must not paint anything: containers
         // are nested, and stacked translucent fills make the result depend on which component repaints (pulsing).
         // The window's single native tint is their background.
-        if (strength < NEUTRAL_CUTOFF && minAlpha == 0f) return GlassColor(color, 0, factor)
+        if (minAlpha == 0f && visibleDistance(color, base) * CONTRAST_BOOST < NEUTRAL_CUTOFF) return GlassColor(color, 0, factor)
         val alpha = strength.coerceIn(minAlpha, 1f) * factor
         return GlassColor(color, (alpha * 255).toInt().coerceIn(0, 255), factor)
+    }
+
+    /**
+     * How different [color] looks from [base], on the same scale whichever way it goes. [channelDistance] cannot tell
+     * this: next to a near-white base even pure white needs full alpha (light themes: white islands on a light grey
+     * panel), next to a near-black base even black does.
+     */
+    private fun visibleDistance(color: Color, base: Color): Float {
+        fun channel(value: Int, base: Int) = abs(value - base) / maxOf(base, 255 - base).toFloat()
+        return maxOf(channel(color.red, base.red), channel(color.green, base.green), channel(color.blue, base.blue))
     }
 
     /** Smallest alpha with which a colour could reproduce [value] over [base] in this channel. */

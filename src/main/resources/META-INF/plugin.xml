@@ -13,7 +13,7 @@
                 resources.</li>
             <li>Coloured backgrounds (selection, current line, file colours, search results) stay visible, just
                 translucent.</li>
-            <li>Works with any theme - dark or light, bundled or from a plugin.</li>
+            <li>Light and dark themes, including switching theme while the IDE is running.</li>
             <li>Live preview sliders: UI opacity, floating windows opacity, editor opacity, sticky lines opacity,
                 highlight opacity, blur radius and floating windows blur radius, plus Reset to Defaults.</li>
         </ul>

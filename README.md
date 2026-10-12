@@ -42,6 +42,7 @@
 - **Real blur, rendered by macOS.** The window server blurs whatever is behind the IDE, the same way Ghostty does it.
 - **Colours stay readable.** Selection, current line, file colours, search results and terminal output keep their
   hue, just translucent. Popups and notifications stay solid enough to read.
+- **Light and dark themes.** Works with both, including switching theme while the IDE is running.
 - **No flicker.** Translucent Swing windows normally flash black or blank; Frost works around every cause it found.
 - **Tune it live.** Sliders for every layer, with instant preview and Reset to Defaults.
 

@@ -1,6 +1,7 @@
 package com.github.pallad42.frost
 
 import com.intellij.codeInsight.hint.HintManager
+import com.intellij.ide.ui.LafManager
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.notification.NotificationType
@@ -60,6 +61,11 @@ class FrostSelfTest {
             "message popup" to { JBPopupFactory.getInstance().createMessage("Message popup over the code").showInBestPositionFor(editor) },
             "quick documentation" to { showQuickDoc(project) },
             "dump popup windows" to { dumpPopupWindows() },
+            // Theme switch while running: the colours must follow, not keep the previous theme's.
+            "switch to light theme" to { switchTheme("Islands Light") },
+            "message popup in light theme" to { showMessageInCurrentEditor(project, "Message popup, light theme") },
+            "switch to dark theme" to { switchTheme("Islands Dark") },
+            "message popup in dark theme" to { showMessageInCurrentEditor(project, "Message popup, dark theme") },
         )
         for ((name, show) in steps) {
             withContext(Dispatchers.EDT) {
@@ -80,6 +86,19 @@ class FrostSelfTest {
         val docEditor = FileEditorManager.getInstance(project).openTextEditor(OpenFileDescriptor(project, file, offset), true) ?: return
         val action = ActionManager.getInstance().getAction("QuickJavaDoc") ?: return
         ActionManager.getInstance().tryToExecute(action, null, docEditor.contentComponent, "frost-selftest", true)
+    }
+
+    /** After a theme switch the editor from the start may be gone: use whichever one is showing now. */
+    private fun showMessageInCurrentEditor(project: Project, text: String) {
+        val editor = FileEditorManager.getInstance(project).selectedTextEditor ?: return log.warn("Frost selftest: no editor")
+        JBPopupFactory.getInstance().createMessage(text).showInBestPositionFor(editor)
+    }
+
+    private fun switchTheme(name: String) {
+        val lafManager = LafManager.getInstance()
+        val theme = lafManager.installedThemes.firstOrNull { it.name == name } ?: return log.warn("Frost selftest: no theme $name")
+        lafManager.setCurrentLookAndFeel(theme, false)
+        lafManager.updateUI()
     }
 
     /** Logs every visible popup window's component tree: class, own background (real alpha) and opacity. */
