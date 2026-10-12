@@ -11,11 +11,8 @@ import com.intellij.openapi.components.service
 data class GlassConfig(
     val enabled: Boolean,
     val uiOpacity: Int,
-    val editorOpacity: Int,
     val blurRadius: Int,
-    val highlightOpacity: Int,
     val popupOpacity: Int,
-    val stickyLinesOpacity: Int,
     val popupBlurRadius: Int,
 )
 
@@ -26,11 +23,8 @@ class GlassSettings : SimplePersistentStateComponent<GlassSettings.Options>(Opti
     class Options : BaseState() {
         var enabled by property(true)
         var uiOpacity by property(85)
-        var editorOpacity by property(0)
         var blurRadius by property(5)
-        var highlightOpacity by property(70)
         var popupOpacity by property(95)
-        var stickyLinesOpacity by property(85)
 
         /** -1: not set yet, floating windows keep the blur of the main window (as before this setting existed). */
         var popupBlurRadius by property(-1)
@@ -41,11 +35,8 @@ class GlassSettings : SimplePersistentStateComponent<GlassSettings.Options>(Opti
         set(value) {
             state.enabled = value.enabled
             state.uiOpacity = value.uiOpacity
-            state.editorOpacity = value.editorOpacity
             state.blurRadius = value.blurRadius
-            state.highlightOpacity = value.highlightOpacity
             state.popupOpacity = value.popupOpacity
-            state.stickyLinesOpacity = value.stickyLinesOpacity
             state.popupBlurRadius = value.popupBlurRadius
         }
 
@@ -57,7 +48,7 @@ class GlassSettings : SimplePersistentStateComponent<GlassSettings.Options>(Opti
 
         private fun Options.toConfig() =
             GlassConfig(
-                enabled, uiOpacity, editorOpacity, blurRadius, highlightOpacity, popupOpacity, stickyLinesOpacity,
+                enabled, uiOpacity, blurRadius, popupOpacity,
                 popupBlurRadius.takeIf { it >= 0 } ?: blurRadius,
             )
     }

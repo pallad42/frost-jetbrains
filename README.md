@@ -47,11 +47,13 @@
 - **The whole IDE turns to glass** - main window, tool windows, toolbars, status bar, popups, tooltips,
   notifications and dialogs.
 - **Real blur, rendered by macOS.** The window server blurs whatever is behind the IDE, the same way Ghostty does it.
-- **Colours stay readable.** Selection, current line, file colours, search results and terminal output keep their
-  hue, just translucent. Popups and notifications stay solid enough to read.
+- **The IDE paints exactly as designed.** Frost does not change a single colour or component: only the theme's
+  background colours turn to glass, applied to the finished pixels of each window. Text, icons, selection, file
+  colours, search results and terminal output stay as they are; popups, menus and dialogs stay solid enough to read.
+- **Works with everything.** Because the effect works on the final image, it does not matter how something was drawn:
+  editors, tool windows, tables, other plugins' UI and animations all get the same glass.
 - **Light and dark themes.** Works with both, including switching theme while the IDE is running.
-- **No flicker.** Translucent Swing windows normally flash black or blank; Frost works around every cause it found.
-- **Tune it live.** Sliders for every layer, with instant preview and Reset to Defaults.
+- **Tune it live.** Opacity and blur sliders with instant preview and Reset to Defaults.
 
 ## Install
 
@@ -76,13 +78,12 @@ Quick toggle at any time: <kbd>View</kbd> → <kbd>Frost</kbd>.
 
 | Setting | Default | What it does |
 |---|---|---|
-| UI opacity | 85% | Tint of the main window |
-| Floating windows opacity | 95% | Popups, tooltips, notifications, dialogs, Settings |
-| Editor opacity | 0% | Extra editor background on top of the tint |
-| Sticky lines opacity | 85% | Background of sticky lines over scrolling code |
+| UI opacity | 85% | How solid the background of the main window stays |
+| Floating windows opacity | 95% | The same for popups, menus, tooltips, dialogs, Settings |
 | Blur radius | 5 | Blur of what is behind the main window, 0 = off |
 | Floating windows blur radius | same as Blur radius | Blur behind popups, dialogs, Settings, 0 = off |
-| Highlight opacity | 70% | Strength of coloured backgrounds |
+
+Notifications, balloons and hints drawn inside the main window are part of it and follow UI opacity.
 
 ## FAQ
 
@@ -94,25 +95,16 @@ Windows (Acrylic/Mica) and Linux (KDE blur) are possible future targets.
 </details>
 
 <details>
-<summary><b>The IDE looks too transparent or flickers.</b></summary>
+<summary><b>The IDE looks too transparent.</b></summary>
 
-Turn off <kbd>Appearance</kbd> → <kbd>Background Image</kbd>. The IDE's background image feature also rewrites
-backgrounds and fights with Frost.
+Raise <b>UI opacity</b> (or <b>Floating windows opacity</b> for popups and dialogs), or the blur radius.
 </details>
 
 <details>
-<summary><b>Why is the Markdown preview not transparent?</b></summary>
+<summary><b>A picture or icon has a see-through spot.</b></summary>
 
-The preview is rendered by an embedded browser (JCEF) that paints its own opaque page background, which plugins
-cannot change. The Markdown source editor next to it is translucent as usual.
-</details>
-
-<details>
-<summary><b>The project colour gradient in the toolbar ends with a hard edge.</b></summary>
-
-With <kbd>Appearance</kbd> → <b>Use project colors in main toolbar</b>, the IDE paints that gradient partly from
-pre-rendered, fixed-size textures without transparency, so it cannot fade out into the glass. Turn the option off
-for a clean frosted toolbar.
+Frost turns pixels into glass by their colour: a pixel of an image that has exactly the colour of a theme background
+becomes glass too. In practice this is rare and small.
 </details>
 
 <details>
@@ -127,19 +119,17 @@ grows with the window size and the blur radius. Lowering <b>Blur radius</b> (or 
 <details>
 <summary>The details, for the curious</summary>
 
-- The window peer is made per-pixel translucent and gets a single native tint - as the NSWindow background for
-  titled windows (macOS clips it to the rounded corners), on the content layer for borderless popups - plus a
-  window-server blur (`CGSSetWindowBackgroundBlurRadius`, the same call Ghostty uses).
-- Every background colour - theme, components, editor colour schemes, terminal output - is replaced by a
-  translucent version: neutral surfaces become fully transparent (stacked translucent fills would pulse), coloured
-  ones keep their hue.
-- Overlays drawn inside the window (notifications, hints, balloons) use the floating windows opacity, sticky lines
-  their own: there is no blur under them, only other UI.
-- On a theme switch every colour is recomputed from the new theme; editors inherit the new theme's colours again
-  instead of getting back the previous ones.
-- Flicker fixes: `Window.paint` would wipe the whole window first (JDK-8303950), so the window keeps reporting itself
-  opaque to Swing while its peer stays translucent; theme-change bursts are coalesced; native state is only re-sent
-  when it really changed; loading-layer snapshots without alpha are skipped.
+- The IDE keeps painting itself fully opaque; Frost does not touch Swing, the theme, editor colour schemes or any
+  component.
+- Each window's content layer (the Metal layer JBR renders Swing into) gets a Core Image filter,
+  `CIColorCubeWithColorSpace`, which Core Animation runs on the window's finished pixels on the GPU. The 64³ colour
+  table "un-mixes" every pixel from the nearest theme background colour (colour-to-alpha): a pixel of that colour
+  becomes glass with the opacity from the settings, a pixel far from it stays solid, and everything in between
+  (antialiased text, hover and selection shades) keeps its contrast to the background.
+- The window and its layer are made non-opaque and the window server blurs what is behind it
+  (`CGSSetWindowBackgroundBlurRadius`, the same call Ghostty uses).
+- The colour table is rebuilt when a slider moves or the theme changes; native state is re-sent only when the live
+  layer lost it (JBR may recreate the layer on resize, display change or project switch).
 </details>
 
 ## Build
@@ -155,7 +145,8 @@ Builds against the IntelliJ IDEA at `ideaPath` in `gradle.properties` when it ex
 `platformVersion` (that is what CI does). Gradle provisions JDK 21 automatically.
 
 `./gradlew runIde -Pfrost.selftest` shows every kind of overlay and switches between light and dark theme, for a
-visual check before a release.
+visual check before a release. `./gradlew runIde -Pfrost.driver=<dir>` executes commands written to `<dir>/cmd.txt`
+(open a file, show a context menu, hover its items, take a screenshot of the IDE's windows) - see `FrostDriver`.
 
 ### Releasing
 
@@ -165,7 +156,7 @@ visual check before a release.
 
 ## Contributing
 
-Issues and pull requests are welcome. Found flicker, a part of the UI that stays solid, or something that looks off
+Issues and pull requests are welcome. Found a part of the UI that stays solid or something that looks off
 with your theme? Open an issue - a screenshot or a short screen recording helps a lot. Windows and Linux support
 would be a great contribution too.
 
