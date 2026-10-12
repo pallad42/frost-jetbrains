@@ -13,9 +13,12 @@ repositories {
     }
 }
 
+/** Your installed IntelliJ IDEA when there is one (faster, no download); otherwise (CI) the version from gradle.properties. */
+val localIde: File? = providers.gradleProperty("ideaPath").orNull?.let(::file)?.takeIf { it.exists() }
+
 dependencies {
     intellijPlatform {
-        local(providers.gradleProperty("ideaPath").get())
+        if (localIde != null) local(localIde) else intellijIdea(providers.gradleProperty("platformVersion").get())
     }
 }
 
@@ -37,7 +40,7 @@ intellijPlatform {
 
     pluginVerification {
         ides {
-            local(file(providers.gradleProperty("ideaPath").get()))
+            current()
         }
     }
 
