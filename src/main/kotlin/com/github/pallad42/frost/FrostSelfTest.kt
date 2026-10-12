@@ -78,9 +78,9 @@ class FrostSelfTest {
         log.info("Frost selftest: done")
     }
 
-    /** Quick Documentation for `Float` in GlassColor.kt, like hovering it. */
+    /** Quick Documentation for `Float` in GlassFilter.kt, like hovering it. */
     private fun showQuickDoc(project: Project) {
-        val file = project.guessProjectDir()?.findFileByRelativePath("src/main/kotlin/com/github/pallad42/frost/GlassColor.kt") ?: return
+        val file = project.guessProjectDir()?.findFileByRelativePath("src/main/kotlin/com/github/pallad42/frost/GlassFilter.kt") ?: return
         val text = String(file.contentsToByteArray())
         val offset = text.indexOf("Float)").takeIf { it >= 0 } ?: return
         val docEditor = FileEditorManager.getInstance(project).openTextEditor(OpenFileDescriptor(project, file, offset), true) ?: return
@@ -101,13 +101,13 @@ class FrostSelfTest {
         lafManager.updateUI()
     }
 
-    /** Logs every visible popup window's component tree: class, own background (real alpha) and opacity. */
+    /** Logs every visible popup window's component tree: class, own background and opacity. */
     private fun dumpPopupWindows() {
         for (window in Window.getWindows().filter { it.isShowing && it !is Frame }) {
             val sb = StringBuilder("Frost selftest: window ${window.javaClass.name} ${window.width}x${window.height}\n")
             fun walk(c: Component, depth: Int) {
                 val bg = if (c.isBackgroundSet) c.background else null
-                val alpha = (bg as? GlassColor)?.paintAlpha ?: bg?.alpha
+                val alpha = bg?.alpha
                 sb.append("  ".repeat(depth)).append(c.javaClass.name.substringAfterLast('.'))
                     .append(" ${c.width}x${c.height}")
                     .append(if (bg != null) " bg=#%06x a=%d".format(bg.rgb and 0xffffff, alpha) else "")

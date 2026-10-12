@@ -5,14 +5,15 @@ import com.intellij.ui.mac.foundation.Foundation
 import com.intellij.ui.mac.foundation.ID
 import com.intellij.ui.mac.foundation.MacUtil
 import com.sun.jna.Function
+import com.sun.jna.Memory
 import com.sun.jna.NativeLibrary
-import java.awt.Color
 import java.awt.Window
 
 /**
- * AppKit side of the effect: makes the NSWindow non-opaque, gives it a translucent tint (window background for
- * titled windows, content layer for borderless ones) and asks the window server to blur whatever is behind the window.
- * The blur is the same private CoreGraphics call Ghostty uses for `background-blur`.
+ * AppKit side of the effect: makes the NSWindow and its content layer non-opaque, puts the [GlassFilter] colour table
+ * on the content layer as a Core Image filter (Core Animation runs it on the window's finished pixels, on the GPU)
+ * and asks the window server to blur whatever is behind the window. The blur is the same private CoreGraphics call
+ * Ghostty uses for `background-blur`.
  */
 internal object NativeGlass {
     private val LOG = logger<NativeGlass>()
@@ -20,53 +21,95 @@ internal object NativeGlass {
     private val blurRadiusFn: Function? by lazy { cgFunction("CGSSetWindowBackgroundBlurRadius") }
     private val connectionFn: Function? by lazy { cgFunction("CGSDefaultConnectionForThread") }
 
+    /** CIFilter lives in CoreImage, which AppKit does not always load up front. */
+    private val coreImageLoaded by lazy {
+        runCatching { NativeLibrary.getInstance("/System/Library/Frameworks/CoreImage.framework/CoreImage") }
+            .onFailure { LOG.warn("Frost: CoreImage not available", it) }
+            .isSuccess
+    }
+
+    /** A colour table uploaded once as NSData; every window using it gets its own filter object. */
+    class Cube internal constructor(internal val data: Long) {
+        @Volatile internal var released = false
+    }
+
+    /** Copies [values] (from [GlassFilter.cube]) into a retained NSData. Release it with [release]. */
+    fun upload(values: FloatArray): Cube {
+        val bytes = values.size.toLong() * 4
+        val memory = Memory(bytes)
+        memory.write(0, values, 0, values.size)
+        val data = Foundation.invoke(Foundation.invoke("NSData", "alloc"), "initWithBytes:length:", memory, bytes)
+        return Cube(data.toLong())
+    }
+
+    /** Frees [cube] once every window switched to another one (runs after the main thread work queued so far). */
+    fun release(cube: Cube) {
+        Foundation.executeOnMainThread(true, false) {
+            if (!cube.released) {
+                cube.released = true
+                Foundation.invoke(ID(cube.data), "release")
+            }
+        }
+    }
+
     /**
      * What was last sent to each native window. Re-sending identical state makes the window server redraw the window
-     * (flicker), but JBR may also replace the content layer (window moved to another display, surface recreated),
-     * which silently drops our tint - so the check compares against the live layer, on the main thread.
+     * (flicker), but AppKit/JBR may also reset the layer (window moved to another display, peer recreated, opacity
+     * re-applied by AWT), which silently drops the effect - so the check compares against the live layer.
      */
-    private data class Applied(val layer: Long, val cgTint: Long, val windowTint: Long, val tint: Int, val blurRadius: Int)
+    private data class Applied(val layer: Long, val filter: Long, val data: Long, val blurRadius: Int)
 
     private val applied = java.util.concurrent.ConcurrentHashMap<Long, Applied>()
 
     /** Cheap to call repeatedly: only touches the native window when its state actually differs. */
-    fun apply(window: Window, tint: Color, blurRadius: Int, force: Boolean = false) {
+    fun apply(window: Window, cube: Cube, blurRadius: Int, force: Boolean = false) {
         val nsWindow = nsWindowOf(window) ?: return
         val key = nsWindow.toLong()
         Foundation.executeOnMainThread(true, false) {
-            if (!window.isDisplayable) return@executeOnMainThread
-            val layer = contentLayer(nsWindow)
+            if (!window.isDisplayable || cube.released || !coreImageLoaded) return@executeOnMainThread
+            val layer = contentLayer(nsWindow) ?: return@executeOnMainThread
             val last = applied[key]
-            if (!force && last != null && layer != null && last.layer == layer.toLong() && last.tint == tint.rgb &&
+            if (!force && last != null && last.layer == layer.toLong() && last.data == cube.data &&
                 last.blurRadius == blurRadius && isStillOurs(nsWindow, layer, last)
             ) return@executeOnMainThread
             Foundation.invoke(nsWindow, "setOpaque:", false)
-            setContentLayerOpaque(nsWindow, false)
-            // Titled windows draw their background colour clipped to the rounded window shape; a tint on the content
-            // layer would fill the square corners outside it. Borderless windows (popups, tooltips) never draw the
-            // window background colour, so they keep the tint on the content layer.
-            val titled = isTitled(nsWindow)
-            Foundation.invoke(nsWindow, "setBackgroundColor:", if (titled) nsColor(tint) else Foundation.invoke("NSColor", "clearColor"))
-            val windowTint = Foundation.invoke(nsWindow, "backgroundColor").toLong()
-            val cgTint = setContentLayerTint(nsWindow, if (titled) null else tint)
+            Foundation.invoke(nsWindow, "setBackgroundColor:", Foundation.invoke("NSColor", "clearColor"))
+            setLayerTreeOpaque(layer, false)
+            val contentView = Foundation.invoke(nsWindow, "contentView")
+            Foundation.invoke(contentView, "setLayerUsesCoreImageFilters:", true)
+            val filter = createFilter(cube) ?: return@executeOnMainThread
+            Foundation.invoke(layer, "setFilters:", Foundation.invoke("NSArray", "arrayWithObject:", filter))
             setBlurRadius(nsWindow, blurRadius)
             // Only remember windows that are really on screen; others get re-applied once they are shown.
-            if (isOnScreen(nsWindow)) applied[key] = Applied(layer?.toLong() ?: 0L, cgTint, windowTint, tint.rgb, blurRadius)
+            if (isOnScreen(nsWindow)) applied[key] = Applied(layer.toLong(), filter.toLong(), cube.data, blurRadius)
             else applied.remove(key)
             if (LOG.isDebugEnabled) LOG.debug("Frost: ${window.javaClass.simpleName} ${if (last == null) "glass applied" else "glass re-applied"} ${describe(nsWindow)}")
         }
     }
 
-    /** The window and its layer still carry the tint we gave them and the layer is still non-opaque. */
-    private fun isStillOurs(nsWindow: ID, layer: ID, last: Applied): Boolean {
-        val opaque = (Foundation.invoke(layer, "isOpaque").toLong() and 0xff) != 0L
-        return !opaque && Foundation.invoke(layer, "backgroundColor").toLong() == last.cgTint &&
-            Foundation.invoke(nsWindow, "backgroundColor").toLong() == last.windowTint
+    private fun createFilter(cube: Cube): ID? {
+        val filter = Foundation.invoke("CIFilter", "filterWithName:", Foundation.nsString("CIColorCubeWithColorSpace"))
+        if (filter.isNil()) {
+            LOG.warn("Frost: CIColorCubeWithColorSpace not available")
+            return null
+        }
+        // The table is indexed by and returns sRGB values, like the colours Swing paints with.
+        val srgb = Foundation.invoke(Foundation.invoke("NSColorSpace", "sRGBColorSpace"), "CGColorSpace")
+        Foundation.invoke(filter, "setValue:forKey:", Foundation.invoke("NSNumber", "numberWithInt:", GlassFilter.SIZE), Foundation.nsString("inputCubeDimension"))
+        Foundation.invoke(filter, "setValue:forKey:", ID(cube.data), Foundation.nsString("inputCubeData"))
+        Foundation.invoke(filter, "setValue:forKey:", srgb, Foundation.nsString("inputColorSpace"))
+        return filter
     }
 
-    private fun isTitled(nsWindow: ID) = (Foundation.invoke(nsWindow, "styleMask").toLong() and NS_WINDOW_STYLE_MASK_TITLED) != 0L
+    /** The layer is still non-opaque and still carries our filter. */
+    private fun isStillOurs(nsWindow: ID, layer: ID, last: Applied): Boolean {
+        if (flag(nsWindow, "isOpaque") || flag(layer, "isOpaque")) return false
+        val filters = Foundation.invoke(layer, "filters")
+        return !filters.isNil() && Foundation.invoke(filters, "count").toInt() == 1 &&
+            Foundation.invoke(filters, "objectAtIndex:", 0L).toLong() == last.filter
+    }
 
-    private const val NS_WINDOW_STYLE_MASK_TITLED = 1L
+    private fun flag(o: ID, selector: String) = !o.isNil() && (Foundation.invoke(o, selector).toLong() and 0xff) != 0L
 
     private fun contentLayer(nsWindow: ID): ID? {
         val contentView = Foundation.invoke(nsWindow, "contentView")
@@ -80,9 +123,12 @@ internal object NativeGlass {
         Foundation.executeOnMainThread(true, false) {
             if (!window.isDisplayable) return@executeOnMainThread
             setBlurRadius(nsWindow, 0)
-            setContentLayerTint(nsWindow, null)
-            setContentLayerOpaque(nsWindow, true)
-            if (isTitled(nsWindow)) Foundation.invoke(nsWindow, "setBackgroundColor:", Foundation.invoke("NSColor", "windowBackgroundColor"))
+            contentLayer(nsWindow)?.let { layer ->
+                Foundation.invoke(layer, "setFilters:", ID.NIL)
+                setLayerTreeOpaque(layer, true)
+            }
+            Foundation.invoke(nsWindow, "setBackgroundColor:", Foundation.invoke("NSColor", "windowBackgroundColor"))
+            Foundation.invoke(nsWindow, "setOpaque:", true)
         }
     }
 
@@ -90,25 +136,9 @@ internal object NativeGlass {
      * The AWT content view renders Swing into a Metal layer that stays opaque unless told otherwise.
      * Depending on the JBR version the Metal layer is the view's own layer or one of its sublayers.
      */
-    private fun setContentLayerOpaque(nsWindow: ID, opaque: Boolean) {
-        val contentView = Foundation.invoke(nsWindow, "contentView")
-        if (contentView.isNil()) return
-        val layer = Foundation.invoke(contentView, "layer")
-        if (layer.isNil()) return
+    private fun setLayerTreeOpaque(layer: ID, opaque: Boolean) {
         Foundation.invoke(layer, "setOpaque:", opaque)
         forEachSublayer(layer) { Foundation.invoke(it, "setOpaque:", opaque) }
-    }
-
-    /**
-     * The tint lives on the content layer itself (drawn under the Swing pixels), not on the NSWindow: borderless
-     * windows - popups, tooltips - never draw the window background colour.
-     */
-    private fun setContentLayerTint(nsWindow: ID, tint: Color?): Long {
-        val layer = contentLayer(nsWindow) ?: return 0L
-        val cgColor = if (tint == null) ID.NIL else Foundation.invoke(nsColor(tint), "CGColor")
-        Foundation.invoke(layer, "setBackgroundColor:", cgColor)
-        // Read back what the layer holds (it retains its own reference) to compare against later.
-        return Foundation.invoke(layer, "backgroundColor").toLong()
     }
 
     private fun forEachSublayer(layer: ID, action: (ID) -> Unit) {
@@ -121,13 +151,13 @@ internal object NativeGlass {
     /** Diagnostics for idea.log: what the native window / layer tree looks like after applying. */
     private fun describe(nsWindow: ID): String {
         fun cls(o: ID) = if (o.isNil()) "nil" else Foundation.toStringViaUTF8(Foundation.invoke(o, "className"))
-        fun flag(o: ID, selector: String) = !o.isNil() && (Foundation.invoke(o, selector).toLong() and 0xff) != 0L
         val contentView = Foundation.invoke(nsWindow, "contentView")
         val layer = if (contentView.isNil()) ID.NIL else Foundation.invoke(contentView, "layer")
-        val superview = if (contentView.isNil()) ID.NIL else Foundation.invoke(contentView, "superview")
         val sublayers = buildList { if (!layer.isNil()) forEachSublayer(layer) { add("${cls(it)}(opaque=${flag(it, "isOpaque")})") } }
+        val filters = if (layer.isNil()) ID.NIL else Foundation.invoke(layer, "filters")
+        val filterCount = if (filters.isNil()) 0 else Foundation.invoke(filters, "count").toInt()
         return "nsWindow=${cls(nsWindow)} opaque=${flag(nsWindow, "isOpaque")} contentView=${cls(contentView)} " +
-            "layer=${cls(layer)}(opaque=${flag(layer, "isOpaque")}) sublayers=$sublayers superview=${cls(superview)}"
+            "layer=${cls(layer)}(opaque=${flag(layer, "isOpaque")}, filters=$filterCount) sublayers=$sublayers"
     }
 
     private fun ID.isNil() = toLong() == 0L
@@ -136,11 +166,6 @@ internal object NativeGlass {
         val id = runCatching { MacUtil.getWindowFromJavaWindow(window) }.getOrNull()
         return id?.takeIf { it.toLong() != 0L }
     }
-
-    private fun nsColor(c: Color): ID = Foundation.invoke(
-        "NSColor", "colorWithSRGBRed:green:blue:alpha:",
-        c.red / 255.0, c.green / 255.0, c.blue / 255.0, c.alpha / 255.0,
-    )
 
     private fun setBlurRadius(nsWindow: ID, radius: Int) {
         val blur = blurRadiusFn ?: return

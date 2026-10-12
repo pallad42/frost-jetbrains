@@ -50,7 +50,7 @@ body:
     attributes:
       label: Frost version and changed settings
       description: Settings | Plugins shows the version; list sliders you changed from the defaults.
-      placeholder: e.g. 0.1.0, UI opacity 70%, blur radius 20
+      placeholder: e.g. 0.2.0, UI opacity 70%, blur radius 20
   - type: textarea
     id: other
     attributes:

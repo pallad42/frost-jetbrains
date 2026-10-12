@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.github.pallad42"
-version = "0.1.1"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
@@ -93,4 +93,6 @@ tasks.named<JavaExec>("runIde") {
     if (providers.gradleProperty("frost.selftest").isPresent) jvmArgs("-Dfrost.selftest=true")
     // ./gradlew runIde -Pfrost.perftest: scroll a maximised editor with and without the effect (see FrostPerfTest).
     if (providers.gradleProperty("frost.perftest").isPresent) jvmArgs("-Dfrost.perftest=true")
+    // ./gradlew runIde -Pfrost.driver=<dir>: execute commands from <dir>/cmd.txt (see FrostDriver).
+    providers.gradleProperty("frost.driver").orNull?.let { jvmArgs("-Dfrost.driver=$it") }
 }

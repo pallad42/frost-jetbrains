@@ -11,21 +11,30 @@
                 popups, tooltips, notifications and dialogs.</li>
             <li>Real window blur (frosted glass, acrylic-like) rendered by the macOS compositor, so it stays light on
                 resources.</li>
-            <li>Coloured backgrounds (selection, current line, file colours, search results) stay visible, just
-                translucent.</li>
+            <li>The IDE paints exactly as designed: only the theme's background colours turn to glass, applied to the
+                finished pixels of each window. Text, icons, selection, file colours and search results stay as they
+                are, and other plugins' UI gets the same glass.</li>
             <li>Light and dark themes, including switching theme while the IDE is running.</li>
-            <li>Live preview sliders: UI opacity, floating windows opacity, editor opacity, sticky lines opacity,
-                highlight opacity, blur radius and floating windows blur radius, plus Reset to Defaults.</li>
+            <li>Live preview sliders: UI opacity, floating windows opacity, blur radius and floating
+                windows blur radius, plus Reset to Defaults.</li>
         </ul>
         <p>Settings: <b>Settings | Appearance &amp; Behavior | Frost</b>. Quick toggle: <b>View | Frost</b>.</p>
-        <p><b>macOS only for now</b> - on Windows and Linux the plugin does nothing.
-        Turn off <b>Appearance | Background Image</b> while using Frost: the two effects fight each other.</p>
+        <p><b>macOS only for now</b> - on Windows and Linux the plugin does nothing.</p>
         <p><b>Early access:</b> tested on macOS with IntelliJ IDEA 2026.2; other JetBrains IDEs 2026.2+ (PyCharm,
         WebStorm, PhpStorm, GoLand...) should work too. Something looks off or stays solid?
         Please report it on <a href="https://github.com/pallad42/frost-jetbrains/issues">GitHub Issues</a>.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>0.2.0</b></p>
+        <ul>
+            <li>New engine: the glass is applied by macOS to the finished pixels of each window, the IDE itself paints
+                unchanged. It replaces the colour swapping behind menu items staying dark after hovering, the dark spot
+                in password fields, black cells in database tables and doubled selection highlights.</li>
+            <li>Simpler settings: UI opacity for the main window, floating windows opacity for popups and dialogs,
+                and the two blur radii. The editor, sticky lines and highlight sliders are gone: the editor follows
+                UI opacity, and highlights stay as the theme paints them.</li>
+        </ul>
         <p><b>0.1.1</b></p>
         <ul>
             <li>Fixed black UI after switching projects in the same window.</li>

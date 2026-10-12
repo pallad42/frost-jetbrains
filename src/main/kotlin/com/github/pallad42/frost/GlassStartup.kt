@@ -20,7 +20,11 @@ class GlassStartup : ProjectActivity {
 
 class GlassAppListener : AppLifecycleListener {
     override fun appFrameCreated(commandLineArgs: MutableList<String>) {
-        ApplicationManager.getApplication().invokeLater { GlassManager.getInstance().start() }
+        ApplicationManager.getApplication().invokeLater {
+            GlassManager.getInstance().start()
+            // Development aid, started only by `./gradlew runIde -Pfrost.driver=<dir>`.
+            System.getProperty("frost.driver")?.let { FrostDriver(java.io.File(it)).start() }
+        }
     }
 
     override fun appWillBeClosed(isRestart: Boolean) {
