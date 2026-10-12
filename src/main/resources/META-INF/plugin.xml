@@ -20,8 +20,9 @@
         <p>Settings: <b>Settings | Appearance &amp; Behavior | Frost</b>. Quick toggle: <b>View | Frost</b>.</p>
         <p><b>macOS only for now</b> - on Windows and Linux the plugin does nothing.
         Turn off <b>Appearance | Background Image</b> while using Frost: the two effects fight each other.</p>
-        <p><b>Early access:</b> tested on macOS with IntelliJ IDEA 2026.2. Something looks off or stays solid?
-        Please report it on <a href="https://github.com/pallad42/frost/issues">GitHub Issues</a>.</p>
+        <p><b>Early access:</b> tested on macOS with IntelliJ IDEA 2026.2; other JetBrains IDEs 2026.2+ (PyCharm,
+        WebStorm, PhpStorm, GoLand...) should work too. Something looks off or stays solid?
+        Please report it on <a href="https://github.com/pallad42/frost-jetbrains/issues">GitHub Issues</a>.</p>
     ]]></description>
 
     <change-notes><![CDATA[
