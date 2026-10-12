@@ -14,6 +14,8 @@ data class GlassConfig(
     val blurRadius: Int,
     val popupOpacity: Int,
     val popupBlurRadius: Int,
+    /** `false`: fast colour matrix (Core Animation); `true`: exact colour table (Core Image), slower. */
+    val exact: Boolean,
 )
 
 @Service(Service.Level.APP)
@@ -28,6 +30,12 @@ class GlassSettings : SimplePersistentStateComponent<GlassSettings.Options>(Opti
 
         /** -1: not set yet, floating windows keep the blur of the main window (as before this setting existed). */
         var popupBlurRadius by property(-1)
+
+        /** Rendering: fast (false) or exact (true), see [GlassConfig.exact]. */
+        var exact by property(false)
+
+        /** Registry keys switched off by Frost 0.1.x have been restored ([GlassManager.restoreLegacyRegistry]). */
+        var legacyRegistryRestored by property(false)
     }
 
     var config: GlassConfig
@@ -38,6 +46,7 @@ class GlassSettings : SimplePersistentStateComponent<GlassSettings.Options>(Opti
             state.blurRadius = value.blurRadius
             state.popupOpacity = value.popupOpacity
             state.popupBlurRadius = value.popupBlurRadius
+            state.exact = value.exact
         }
 
     companion object {
@@ -49,7 +58,7 @@ class GlassSettings : SimplePersistentStateComponent<GlassSettings.Options>(Opti
         private fun Options.toConfig() =
             GlassConfig(
                 enabled, uiOpacity, blurRadius, popupOpacity,
-                popupBlurRadius.takeIf { it >= 0 } ?: blurRadius,
+                popupBlurRadius.takeIf { it >= 0 } ?: blurRadius, exact,
             )
     }
 }

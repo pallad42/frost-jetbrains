@@ -32,12 +32,12 @@ class FrostPerfTest {
         } ?: return
         delay(3000)
         val saved = GlassSettings.getInstance().config
-        val phases = listOf(
-            "off" to saved.copy(enabled = false),
-            "blur5" to saved.copy(enabled = true, blurRadius = 5),
-            "blur0" to saved.copy(enabled = true, blurRadius = 0),
-            "off-again" to saved.copy(enabled = false),
-        )
+        // -Dfrost.perftest.blurs=0,2,5: the blur radii to measure (main window), between two phases without the effect;
+        // -1 adds another phase without the effect, to interleave them on a busy machine.
+        val blurs = System.getProperty("frost.perftest.blurs", "5,0").split(',').map { it.trim().toInt() }
+        val phases = listOf("off" to saved.copy(enabled = false)) +
+            blurs.map { if (it < 0) "off" to saved.copy(enabled = false) else "blur$it" to saved.copy(enabled = true, blurRadius = it) } +
+            listOf("off-again" to saved.copy(enabled = false))
         for ((name, config) in phases) {
             withContext(Dispatchers.EDT) { GlassManager.getInstance().apply(config) }
             delay(2000)

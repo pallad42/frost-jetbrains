@@ -12,8 +12,7 @@ import java.awt.Window
 /**
  * AppKit side of the effect: makes the NSWindow and its content layer non-opaque, puts the [GlassFilter] colour table
  * on the content layer as a Core Image filter (Core Animation runs it on the window's finished pixels, on the GPU)
- * and asks the window server to blur whatever is behind the window. The blur is the same private CoreGraphics call
- * Ghostty uses for `background-blur`.
+ * and asks the window server to blur whatever is behind the window (a private CoreGraphics call).
  */
 internal object NativeGlass {
     private val LOG = logger<NativeGlass>()
@@ -28,18 +27,21 @@ internal object NativeGlass {
             .isSuccess
     }
 
-    /** A colour table uploaded once as NSData; every window using it gets its own filter object. */
-    class Cube internal constructor(internal val data: Long) {
+    /**
+     * The colour transform for one kind of window: the exact colour table uploaded once as NSData (Core Image fallback)
+     * and its linear approximation for Core Animation's colour matrix. Every window using it gets its own filter object.
+     */
+    class Cube internal constructor(internal val data: Long, internal val matrix: FloatArray? = null) {
         @Volatile internal var released = false
     }
 
     /** Copies [values] (from [GlassFilter.cube]) into a retained NSData. Release it with [release]. */
-    fun upload(values: FloatArray): Cube {
+    fun upload(values: FloatArray, matrix: FloatArray? = null): Cube {
         val bytes = values.size.toLong() * 4
         val memory = Memory(bytes)
         memory.write(0, values, 0, values.size)
         val data = Foundation.invoke(Foundation.invoke("NSData", "alloc"), "initWithBytes:length:", memory, bytes)
-        return Cube(data.toLong())
+        return Cube(data.toLong(), matrix)
     }
 
     /** Frees [cube] once every window switched to another one (runs after the main thread work queued so far). */
@@ -57,19 +59,19 @@ internal object NativeGlass {
      * (flicker), but AppKit/JBR may also reset the layer (window moved to another display, peer recreated, opacity
      * re-applied by AWT), which silently drops the effect - so the check compares against the live layer.
      */
-    private data class Applied(val layer: Long, val filter: Long, val data: Long, val blurRadius: Int)
+    private data class Applied(val layer: Long, val data: Long, val exact: Boolean, val blurRadius: Int)
 
     private val applied = java.util.concurrent.ConcurrentHashMap<Long, Applied>()
 
     /** Cheap to call repeatedly: only touches the native window when its state actually differs. */
-    fun apply(window: Window, cube: Cube, blurRadius: Int, force: Boolean = false) {
+    fun apply(window: Window, cube: Cube, blurRadius: Int, exact: Boolean, force: Boolean = false) {
         val nsWindow = nsWindowOf(window) ?: return
         val key = nsWindow.toLong()
         Foundation.executeOnMainThread(true, false) {
-            if (!window.isDisplayable || cube.released || !coreImageLoaded) return@executeOnMainThread
+            if (!window.isDisplayable || cube.released) return@executeOnMainThread
             val layer = contentLayer(nsWindow) ?: return@executeOnMainThread
             val last = applied[key]
-            if (!force && last != null && last.layer == layer.toLong() && last.data == cube.data &&
+            if (!force && last != null && last.layer == layer.toLong() && last.data == cube.data && last.exact == exact &&
                 last.blurRadius == blurRadius && isStillOurs(nsWindow, layer, last)
             ) return@executeOnMainThread
             Foundation.invoke(nsWindow, "setOpaque:", false)
@@ -77,22 +79,33 @@ internal object NativeGlass {
             setLayerTreeOpaque(layer, false)
             val contentView = Foundation.invoke(nsWindow, "contentView")
             Foundation.invoke(contentView, "setLayerUsesCoreImageFilters:", true)
-            val filter = createFilter(cube) ?: return@executeOnMainThread
+            val filter = createFilter(cube, exact) ?: return@executeOnMainThread
             Foundation.invoke(layer, "setFilters:", Foundation.invoke("NSArray", "arrayWithObject:", filter))
             setBlurRadius(nsWindow, blurRadius)
             // Only remember windows that are really on screen; others get re-applied once they are shown.
-            if (isOnScreen(nsWindow)) applied[key] = Applied(layer.toLong(), filter.toLong(), cube.data, blurRadius)
+            if (isOnScreen(nsWindow)) applied[key] = Applied(layer.toLong(), cube.data, exact, blurRadius)
             else applied.remove(key)
             if (LOG.isDebugEnabled) LOG.debug("Frost: ${window.javaClass.simpleName} ${if (last == null) "glass applied" else "glass re-applied"} ${describe(nsWindow)}")
         }
     }
 
-    private fun createFilter(cube: Cube): ID? {
+    /**
+     * Fast: Core Animation's own colour matrix, several times cheaper for the window server than any Core Image filter,
+     * but a private filter and a linear approximation. Exact: the colour cube through public Core Image. Each one is
+     * the other's fallback where it is not available.
+     */
+    private fun createFilter(cube: Cube, exact: Boolean): ID? =
+        if (exact) createCubeFilter(cube) ?: createMatrixFilter(cube) else createMatrixFilter(cube) ?: createCubeFilter(cube)
+
+    private fun createCubeFilter(cube: Cube): ID? {
+        if (!coreImageLoaded) return null
         val filter = Foundation.invoke("CIFilter", "filterWithName:", Foundation.nsString("CIColorCubeWithColorSpace"))
         if (filter.isNil()) {
             LOG.warn("Frost: CIColorCubeWithColorSpace not available")
             return null
         }
+        // Core Animation keeps its own copy of the filter: the name is what identifies ours later.
+        Foundation.invoke(filter, "setName:", Foundation.nsString(filterName(cube.data, exact = true)))
         // The table is indexed by and returns sRGB values, like the colours Swing paints with.
         val srgb = Foundation.invoke(Foundation.invoke("NSColorSpace", "sRGBColorSpace"), "CGColorSpace")
         Foundation.invoke(filter, "setValue:forKey:", Foundation.invoke("NSNumber", "numberWithInt:", GlassFilter.SIZE), Foundation.nsString("inputCubeDimension"))
@@ -101,13 +114,35 @@ internal object NativeGlass {
         return filter
     }
 
-    /** The layer is still non-opaque and still carries our filter. */
+    /** Core Animation's own (private) colour matrix filter, run by the render server without Core Image. */
+    private fun createMatrixFilter(cube: Cube): ID? {
+        val m = cube.matrix ?: return null
+        val filter = Foundation.invoke("CAFilter", "filterWithType:", Foundation.nsString("colorMatrix"))
+        if (filter.isNil()) {
+            LOG.warn("Frost: CAFilter colorMatrix not available")
+            return null
+        }
+        val bytes = Memory(80)
+        bytes.write(0, m, 0, 20)
+        val type = Memory(64)
+        type.setString(0, "{CAColorMatrix=ffffffffffffffffffff}")
+        val value = Foundation.invoke("NSValue", "valueWithBytes:objCType:", bytes, type)
+        Foundation.invoke(filter, "setValue:forKey:", value, Foundation.nsString("inputColorMatrix"))
+        Foundation.invoke(filter, "setName:", Foundation.nsString(filterName(cube.data, exact = false)))
+        return filter
+    }
+
+    /** The layer is still non-opaque and still carries our filter for the same colour table. */
     private fun isStillOurs(nsWindow: ID, layer: ID, last: Applied): Boolean {
         if (flag(nsWindow, "isOpaque") || flag(layer, "isOpaque")) return false
         val filters = Foundation.invoke(layer, "filters")
-        return !filters.isNil() && Foundation.invoke(filters, "count").toInt() == 1 &&
-            Foundation.invoke(filters, "objectAtIndex:", 0L).toLong() == last.filter
+        if (filters.isNil() || Foundation.invoke(filters, "count").toInt() != 1) return false
+        val name = Foundation.invoke(Foundation.invoke(filters, "objectAtIndex:", 0L), "name")
+        // Either kind counts: the requested one may have fallen back to the other.
+        return !name.isNil() && Foundation.toStringViaUTF8(name) in setOf(filterName(last.data, true), filterName(last.data, false))
     }
+
+    private fun filterName(data: Long, exact: Boolean) = "frost-${if (exact) "exact" else "fast"}-$data"
 
     private fun flag(o: ID, selector: String) = !o.isNil() && (Foundation.invoke(o, selector).toLong() and 0xff) != 0L
 

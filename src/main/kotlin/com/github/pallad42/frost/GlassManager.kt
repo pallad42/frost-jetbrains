@@ -7,6 +7,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.util.SystemInfoRt
+import com.intellij.openapi.util.registry.Registry
 import java.awt.AWTEvent
 import java.awt.Color
 import java.awt.Frame
@@ -90,7 +91,24 @@ class GlassManager : Disposable {
             awtListener,
             AWTEvent.HIERARCHY_EVENT_MASK or AWTEvent.CONTAINER_EVENT_MASK or AWTEvent.COMPONENT_EVENT_MASK or AWTEvent.WINDOW_EVENT_MASK,
         )
+        restoreLegacyRegistry()
         apply(GlassSettings.getInstance().config)
+    }
+
+    /**
+     * Frost 0.1.x switched these off while it was active, meant to be temporary, but the IDE saved the values on exit
+     * and kept them off for good. The current engine needs none of them: give them back their defaults, once.
+     */
+    private fun restoreLegacyRegistry() {
+        val state = GlassSettings.getInstance().state
+        if (state.legacyRegistryRestored) return
+        for (value in Registry.getAll()) {
+            if (value.key !in LEGACY_REGISTRY_KEYS || !value.isChangedFromDefault() || value.asBoolean()) continue
+            runCatching { value.resetToDefault() }
+                .onSuccess { log.info("Frost: restored registry key ${value.key} switched off by an older Frost") }
+                .onFailure { log.warn("Frost: cannot restore registry key ${value.key}", it) }
+        }
+        state.legacyRegistryRestored = true
     }
 
     /** Applies [config] right away; used both for saved settings and for live preview from the settings page. */
@@ -128,8 +146,11 @@ class GlassManager : Disposable {
         if (signature == cubeSignature && frameCube != null) return false
         cubeSignature = signature
         val oldCubes = listOfNotNull(frameCube, floatingCube)
-        frameCube = GlassStats.measure("buildCube") { NativeGlass.upload(GlassFilter.cube(frameSurfaces)) }
-        floatingCube = GlassStats.measure("buildCube") { NativeGlass.upload(GlassFilter.cube(floatingSurfaces)) }
+        // The colour matrix keys on one colour: the editor's (and panels') in the main window, the popups' elsewhere.
+        val editorRgb = editorBackground().rgb and 0xffffff
+        val frameBase = frameSurfaces.firstOrNull { (it.color.rgb and 0xffffff) == editorRgb } ?: frameSurfaces.first()
+        frameCube = GlassStats.measure("buildCube") { NativeGlass.upload(GlassFilter.cube(frameSurfaces), GlassFilter.matrix(frameBase)) }
+        floatingCube = GlassStats.measure("buildCube") { NativeGlass.upload(GlassFilter.cube(floatingSurfaces), GlassFilter.matrix(floatingSurfaces.first())) }
         // Queued after the windows are switched to the new tables (all native work runs in order on the main thread).
         ApplicationManager.getApplication().invokeLater { oldCubes.forEach(NativeGlass::release) }
         log.debug("Frost: colour tables rebuilt, main window $frameSurfaces, floating windows $floatingSurfaces")
@@ -179,7 +200,7 @@ class GlassManager : Disposable {
         val cube = (if (window is Frame) frameCube else floatingCube) ?: return@measure
         try {
             windows[window] = Unit
-            NativeGlass.apply(window, cube, blur(window, config), force)
+            NativeGlass.apply(window, cube, blur(window, config), config.exact, force)
         } catch (e: Throwable) {
             log.warn("Frost: failed to apply to ${window.javaClass.name}", e)
         }
@@ -204,6 +225,15 @@ class GlassManager : Disposable {
 
         /** Backgrounds the window is made of: the window itself, tool windows / islands, panels, dialogs. */
         private val SURFACE_KEYS = listOf("MainWindow.background", "ToolWindow.background", "Panel.background")
+
+        /** Registry keys Frost 0.1.x switched off (see [restoreLegacyRegistry]). */
+        private val LEGACY_REGISTRY_KEYS = setOf(
+            "ide.experimental.ui.animations",
+            "editor.zero.latency.rendering.double.buffering",
+            "editor.skeleton.animation.enabled",
+            "database.grid.render.cache",
+            "database.grid.render.cache.fast.scroll",
+        )
 
         /** Backgrounds of popups, tooltips and notifications, the main surfaces of floating windows. */
         private val POPUP_KEYS = listOf("Popup.background", "PopupMenu.background", "ToolTip.background", "Notification.background")

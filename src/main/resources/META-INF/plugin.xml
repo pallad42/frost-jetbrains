@@ -3,9 +3,8 @@
     <name>Frost</name>
     <vendor url="https://github.com/pallad42/frost-jetbrains">pallad42</vendor>
     <description><![CDATA[
-        <p>Translucent, blurred IDE windows - frosted glass for your IDE, like <code>background-opacity</code> and
-        <code>background-blur</code> in Ghostty or the transparent, blurred windows of iTerm2, Warp and VS Code
-        vibrancy extensions. A transparent background with real blur, without a background image.</p>
+        <p>Translucent, blurred IDE windows - frosted glass for your IDE. A transparent background with real blur,
+        without a background image.</p>
         <ul>
             <li>The whole UI is translucent: main window, editor, tool windows, terminal, toolbars, status bar,
                 popups, tooltips, notifications and dialogs.</li>
@@ -16,7 +15,7 @@
                 are, and other plugins' UI gets the same glass.</li>
             <li>Light and dark themes, including switching theme while the IDE is running.</li>
             <li>Live preview sliders: UI opacity, floating windows opacity, blur radius and floating
-                windows blur radius, plus Reset to Defaults.</li>
+                windows blur radius; Fast or Exact rendering; Reset to Defaults.</li>
         </ul>
         <p>Settings: <b>Settings | Appearance &amp; Behavior | Frost</b>. Quick toggle: <b>View | Frost</b>.</p>
         <p><b>macOS only for now</b> - on Windows and Linux the plugin does nothing.</p>
@@ -31,9 +30,13 @@
             <li>New engine: the glass is applied by macOS to the finished pixels of each window, the IDE itself paints
                 unchanged. It replaces the colour swapping behind menu items staying dark after hovering, the dark spot
                 in password fields, black cells in database tables and doubled selection highlights.</li>
+            <li>Rendering setting: Fast (default, Core Animation colour matrix) or Exact (Core Image colour table).</li>
             <li>Simpler settings: UI opacity for the main window, floating windows opacity for popups and dialogs,
                 and the two blur radii. The editor, sticky lines and highlight sliders are gone: the editor follows
                 UI opacity, and highlights stay as the theme paints them.</li>
+            <li>Restores, once, the IDE animations and caches that Frost 0.1.x switched off and the IDE then kept off
+                (registry: ide.experimental.ui.animations, editor.zero.latency.rendering.double.buffering,
+                editor.skeleton.animation.enabled, database.grid.render.cache, database.grid.render.cache.fast.scroll).</li>
         </ul>
         <p><b>0.1.1</b></p>
         <ul>
