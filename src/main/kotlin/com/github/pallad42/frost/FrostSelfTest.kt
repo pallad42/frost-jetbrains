@@ -21,12 +21,7 @@ import com.intellij.ui.awt.RelativePoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import java.awt.Component
-import java.awt.Container
-import java.awt.Frame
 import java.awt.Point
-import java.awt.Window
-import javax.swing.JComponent
 
 /**
  * Development aid, started by [GlassStartup] only when the IDE runs with `-Dfrost.selftest=true`
@@ -60,7 +55,6 @@ class FrostSelfTest {
             },
             "message popup" to { JBPopupFactory.getInstance().createMessage("Message popup over the code").showInBestPositionFor(editor) },
             "quick documentation" to { showQuickDoc(project) },
-            "dump popup windows" to { dumpPopupWindows() },
             // Theme switch while running: the colours must follow, not keep the previous theme's.
             "switch to light theme" to { switchTheme("Islands Light") },
             "message popup in light theme" to { showMessageInCurrentEditor(project, "Message popup, light theme") },
@@ -99,25 +93,6 @@ class FrostSelfTest {
         val theme = lafManager.installedThemes.firstOrNull { it.name == name } ?: return log.warn("Frost selftest: no theme $name")
         lafManager.setCurrentLookAndFeel(theme, false)
         lafManager.updateUI()
-    }
-
-    /** Logs every visible popup window's component tree: class, own background and opacity. */
-    private fun dumpPopupWindows() {
-        for (window in Window.getWindows().filter { it.isShowing && it !is Frame }) {
-            val sb = StringBuilder("Frost selftest: window ${window.javaClass.name} ${window.width}x${window.height}\n")
-            fun walk(c: Component, depth: Int) {
-                val bg = if (c.isBackgroundSet) c.background else null
-                val alpha = bg?.alpha
-                sb.append("  ".repeat(depth)).append(c.javaClass.name.substringAfterLast('.'))
-                    .append(" ${c.width}x${c.height}")
-                    .append(if (bg != null) " bg=#%06x a=%d".format(bg.rgb and 0xffffff, alpha) else "")
-                    .append(if (c is JComponent && c.isOpaque) " opaque" else "")
-                    .append('\n')
-                if (c is Container) c.components.forEach { walk(it, depth + 1) }
-            }
-            walk(window, 0)
-            log.info(sb.toString())
-        }
     }
 
     private fun openEditor(project: Project): Editor? {

@@ -1,6 +1,7 @@
 package com.github.pallad42.frost
 
 import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.dsl.builder.panel
 import javax.swing.JComponent
@@ -13,6 +14,7 @@ class GlassConfigurable : Configurable {
     private lateinit var blurRadius: JSlider
     private lateinit var popupOpacity: JSlider
     private lateinit var popupBlurRadius: JSlider
+    private lateinit var rendering: ComboBox<String>
 
     override fun getDisplayName() = "Frost"
 
@@ -33,6 +35,9 @@ class GlassConfigurable : Configurable {
             row("Floating windows blur radius:") {
                 popupBlurRadius = slider(0, 60, 5, 15).applyToComponent { paintLabels = true }.component
             }
+            row("Rendering:") {
+                rendering = comboBox(listOf(FAST, EXACT)).component
+            }.rowComment("Fast is several times lighter for macOS but uses a private macOS filter and approximates how see-through coloured pixels are. Exact uses public Core Image with exact colours, but makes scrolling and animations noticeably heavier.")
             row {
                 button("Reset to Defaults") { show(GlassSettings.DEFAULTS) }
                     .comment("Previews the default values; press Apply or OK to keep them.")
@@ -44,13 +49,14 @@ class GlassConfigurable : Configurable {
         reset()
         enabled.addItemListener { preview() }
         listOf(uiOpacity, popupOpacity, blurRadius, popupBlurRadius).forEach { it.addChangeListener { preview() } }
+        rendering.addActionListener { preview() }
         return content
     }
 
     private fun current() =
         GlassConfig(
             enabled.isSelected, uiOpacity.value, blurRadius.value, popupOpacity.value,
-            popupBlurRadius.value,
+            popupBlurRadius.value, rendering.selectedItem == EXACT,
         )
 
     private fun preview() = GlassManager.getInstance().apply(current())
@@ -71,10 +77,16 @@ class GlassConfigurable : Configurable {
         blurRadius.value = config.blurRadius
         popupOpacity.value = config.popupOpacity
         popupBlurRadius.value = config.popupBlurRadius
+        rendering.selectedItem = if (config.exact) EXACT else FAST
         GlassManager.getInstance().apply(config)
     }
 
     override fun disposeUIResources() {
         GlassManager.getInstance().apply(GlassSettings.getInstance().config)
+    }
+
+    private companion object {
+        const val FAST = "Fast"
+        const val EXACT = "Exact"
     }
 }

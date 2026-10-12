@@ -29,7 +29,7 @@ import javax.swing.Timer
  * executes commands written to `<dir>/cmd.txt` one line at a time and answers in `<dir>/out.txt`, so the effect can be
  * checked on real windows without touching the mouse or other applications. Commands:
  * `project <path>`, `open <file>`, `menu <action group id>`, `hover <item index>`, `action <id>`, `escape`,
- * `shot <name>` (captures this IDE's showing windows into `<dir>/<name>.png`), `windows`.
+ * `shot <name>` (captures this IDE's showing windows into `<dir>/<name>.png`), `windows`, `exit`.
  */
 class FrostDriver(private val dir: File) {
     private val log = logger<FrostDriver>()
@@ -87,6 +87,11 @@ class FrostDriver(private val dir: File) {
                 MenuSelectionManager.defaultManager().clearSelectedPath()
                 popup = null
                 "cleared"
+            }
+            // Normal quit, so the IDE saves its settings the way it does for a user.
+            "exit" -> {
+                ApplicationManager.getApplication().invokeLater { ApplicationManager.getApplication().exit() }
+                "exiting"
             }
             "windows" -> showingWindows().joinToString("; ") { "${it.javaClass.simpleName} ${it.bounds}" }
             "shot" -> shot(arg)

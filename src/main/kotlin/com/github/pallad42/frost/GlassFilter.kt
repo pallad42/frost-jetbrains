@@ -57,6 +57,29 @@ internal object GlassFilter {
         return out
     }
 
+    /**
+     * The same colour-to-alpha as [cube], but linear so Core Animation's own colour matrix filter can run it (much
+     * cheaper for the window server): the alpha is the average channel distance from [base] instead of the largest
+     * one. That only changes how see-through coloured pixels are, not their colour over the backdrop. Rows give R, G, B, A from
+     * (R, G, B, A, 1), as in `CAColorMatrix`; the output is premultiplied, like the cube's.
+     */
+    fun matrix(base: Surface): FloatArray {
+        val k = floatArrayOf(base.color.red / 255f, base.color.green / 255f, base.color.blue / 255f)
+        val t = base.opacity.coerceIn(0f, 1f)
+        // Dark themes: content is lighter than the surface; light themes: darker.
+        val dark = k.average() < 0.5f
+        val alphaCoef = FloatArray(3) { i -> (if (dark) 1f else -1f) / 3f / (if (dark) 1 - k[i] else k[i]).coerceAtLeast(1e-3f) }
+        val alphaConst = -(0 until 3).sumOf { (alphaCoef[it] * k[it]).toDouble() }.toFloat()
+        val m = FloatArray(20)
+        for (j in 0 until 3) {
+            for (i in 0 until 3) m[j * 5 + i] = (if (i == j) 1f else 0f) + (1 - t) * k[j] * alphaCoef[i]
+            m[j * 5 + 4] = (1 - t) * k[j] * (alphaConst - 1)
+        }
+        for (i in 0 until 3) m[15 + i] = (1 - t) * alphaCoef[i]
+        m[19] = t + (1 - t) * alphaConst
+        return m
+    }
+
     /** Smallest alpha with which some colour painted over [key] gives exactly (r, g, b). */
     private fun alphaOver(r: Float, g: Float, b: Float, key: FloatArray): Float =
         maxOf(channel(r, key[0]), channel(g, key[1]), channel(b, key[2]))

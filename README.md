@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>Frosted glass for your JetBrains IDE.</b><br>
-  Translucent, blurred IDE windows - like <code>background-opacity</code> and <code>background-blur</code> in Ghostty.
+  Translucent, blurred IDE windows.
 </p>
 
 <p align="center">
@@ -46,12 +46,13 @@
 
 - **The whole IDE turns to glass** - main window, tool windows, toolbars, status bar, popups, tooltips,
   notifications and dialogs.
-- **Real blur, rendered by macOS.** The window server blurs whatever is behind the IDE, the same way Ghostty does it.
+- **Real blur, rendered by macOS.** The window server blurs whatever is behind the IDE.
 - **The IDE paints exactly as designed.** Frost does not change a single colour or component: only the theme's
   background colours turn to glass, applied to the finished pixels of each window. Text, icons, selection, file
   colours, search results and terminal output stay as they are; popups, menus and dialogs stay solid enough to read.
 - **Works with everything.** Because the effect works on the final image, it does not matter how something was drawn:
-  editors, tool windows, tables, other plugins' UI and animations all get the same glass.
+  editors, tool windows, tables, the Markdown preview (an embedded browser), other plugins' UI and animations all get
+  the same glass.
 - **Light and dark themes.** Works with both, including switching theme while the IDE is running.
 - **Tune it live.** Opacity and blur sliders with instant preview and Reset to Defaults.
 
@@ -82,6 +83,7 @@ Quick toggle at any time: <kbd>View</kbd> → <kbd>Frost</kbd>.
 | Floating windows opacity | 95% | The same for popups, menus, tooltips, dialogs, Settings |
 | Blur radius | 5 | Blur of what is behind the main window, 0 = off |
 | Floating windows blur radius | same as Blur radius | Blur behind popups, dialogs, Settings, 0 = off |
+| Rendering | Fast | **Fast**: Core Animation's colour matrix, several times lighter for macOS (a private macOS filter). **Exact**: public Core Image with exact colours, noticeably heavier when scrolling |
 
 Notifications, balloons and hints drawn inside the main window are part of it and follow UI opacity.
 
@@ -90,8 +92,10 @@ Notifications, balloons and hints drawn inside the main window are part of it an
 <details>
 <summary><b>Does it work on Windows or Linux?</b></summary>
 
-Not yet. The blur and window translucency are macOS-specific; on other systems the plugin does nothing.
-Windows (Acrylic/Mica) and Linux (KDE blur) are possible future targets.
+Not yet; on other systems the plugin does nothing. Every part of the effect is a macOS feature: the colour filter
+runs in Core Animation, macOS's window compositor, and the blur is a window-server call. Windows (DWM) and Linux
+compositors offer blur behind a window (Acrylic/Mica, KDE blur), but none of them lets an application put a filter on
+its own finished window image, so the same approach would need a different place to do the colour-to-alpha step.
 </details>
 
 <details>
@@ -110,8 +114,17 @@ becomes glass too. In practice this is rare and small.
 <details>
 <summary><b>Scrolling feels slightly slower on a big maximised window.</b></summary>
 
-A translucent window has to be composited by macOS together with everything behind it, on every frame; the cost
-grows with the window size and the blur radius. Lowering <b>Blur radius</b> (or setting it to 0) helps the most.
+A translucent window has to be composited by macOS together with everything behind it, on every frame, with the
+colour filter applied; the cost grows with the window size and the blur. Keep <b>Rendering</b> on <b>Fast</b>;
+setting <b>Blur radius</b> to 0 helps the most after that.
+</details>
+
+<details>
+<summary><b>What changes when upgrading from 0.1.x?</b></summary>
+
+The editor, sticky lines and highlight opacity sliders are gone: the editor follows UI opacity and highlights stay as
+the theme paints them. Frost 0.1.x switched a few IDE animations and caches off while it ran and the IDE kept them off
+afterwards; 0.2.0 turns them back on once, on its first start.
 </details>
 
 ## How it works
@@ -121,13 +134,17 @@ grows with the window size and the blur radius. Lowering <b>Blur radius</b> (or 
 
 - The IDE keeps painting itself fully opaque; Frost does not touch Swing, the theme, editor colour schemes or any
   component.
-- Each window's content layer (the Metal layer JBR renders Swing into) gets a Core Image filter,
-  `CIColorCubeWithColorSpace`, which Core Animation runs on the window's finished pixels on the GPU. The 64³ colour
-  table "un-mixes" every pixel from the nearest theme background colour (colour-to-alpha): a pixel of that colour
-  becomes glass with the opacity from the settings, a pixel far from it stays solid, and everything in between
-  (antialiased text, hover and selection shades) keeps its contrast to the background.
+- Each window's content layer (the Metal layer JBR renders Swing into) gets a filter that Core Animation runs on the
+  window's finished pixels. It "un-mixes" every pixel from the theme background colour (colour-to-alpha): a pixel of
+  that colour becomes glass with the opacity from the settings, a pixel far from it stays solid, and everything in
+  between (antialiased text, hover and selection shades) keeps its contrast to the background.
+- **Fast** rendering (the default) uses Core Animation's own colour matrix filter, which the window server runs
+  several times cheaper than a Core Image filter. Being linear, it measures how far a pixel is from the background by
+  the average of its channels; that only changes how see-through coloured pixels are, not their colour.
+- **Exact** rendering uses an exact 64³ colour table through Core Image (`CIColorCubeWithColorSpace`), a public API,
+  at a higher cost for the window server. Each one is the other's fallback where it is not available.
 - The window and its layer are made non-opaque and the window server blurs what is behind it
-  (`CGSSetWindowBackgroundBlurRadius`, the same call Ghostty uses).
+  (`CGSSetWindowBackgroundBlurRadius`).
 - The colour table is rebuilt when a slider moves or the theme changes; native state is re-sent only when the live
   layer lost it (JBR may recreate the layer on resize, display change or project switch).
 </details>
