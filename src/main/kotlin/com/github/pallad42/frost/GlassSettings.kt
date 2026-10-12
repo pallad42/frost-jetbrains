@@ -16,6 +16,7 @@ data class GlassConfig(
     val highlightOpacity: Int,
     val popupOpacity: Int,
     val stickyLinesOpacity: Int,
+    val popupBlurRadius: Int,
 )
 
 @Service(Service.Level.APP)
@@ -30,6 +31,9 @@ class GlassSettings : SimplePersistentStateComponent<GlassSettings.Options>(Opti
         var highlightOpacity by property(70)
         var popupOpacity by property(95)
         var stickyLinesOpacity by property(85)
+
+        /** -1: not set yet, floating windows keep the blur of the main window (as before this setting existed). */
+        var popupBlurRadius by property(-1)
     }
 
     var config: GlassConfig
@@ -42,6 +46,7 @@ class GlassSettings : SimplePersistentStateComponent<GlassSettings.Options>(Opti
             state.highlightOpacity = value.highlightOpacity
             state.popupOpacity = value.popupOpacity
             state.stickyLinesOpacity = value.stickyLinesOpacity
+            state.popupBlurRadius = value.popupBlurRadius
         }
 
     companion object {
@@ -51,6 +56,9 @@ class GlassSettings : SimplePersistentStateComponent<GlassSettings.Options>(Opti
         val DEFAULTS: GlassConfig get() = Options().toConfig()
 
         private fun Options.toConfig() =
-            GlassConfig(enabled, uiOpacity, editorOpacity, blurRadius, highlightOpacity, popupOpacity, stickyLinesOpacity)
+            GlassConfig(
+                enabled, uiOpacity, editorOpacity, blurRadius, highlightOpacity, popupOpacity, stickyLinesOpacity,
+                popupBlurRadius.takeIf { it >= 0 } ?: blurRadius,
+            )
     }
 }

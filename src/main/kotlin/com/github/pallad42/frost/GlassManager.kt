@@ -242,7 +242,7 @@ class GlassManager : Disposable {
 
     /** Re-checks only the native side (tint, blur) of a window we already handle. */
     private fun refreshNative(window: Window, config: GlassConfig) {
-        if (window in windows && window.isDisplayable) NativeGlass.apply(window, tint(window, config), config.blurRadius)
+        if (window in windows && window.isDisplayable) NativeGlass.apply(window, tint(window, config), blur(window, config))
     }
 
     private fun attach(window: Window, config: GlassConfig) = GlassStats.measure("attachWindow") { attachImpl(window, config) }
@@ -265,7 +265,7 @@ class GlassManager : Disposable {
                 switched = true
             }
             glassifyTree(window, config)
-            NativeGlass.apply(window, tint(window, config), config.blurRadius, force = switched)
+            NativeGlass.apply(window, tint(window, config), blur(window, config), force = switched)
         } catch (e: Throwable) {
             log.warn("Frost: failed to apply to ${window.javaClass.name}", e)
         }
@@ -326,7 +326,7 @@ class GlassManager : Disposable {
         val overlayAlpha = Translucency.percentToAlpha(config.popupOpacity)
         when {
             bg is GlassColor -> when {
-                overlay && bg.paintAlpha < overlayAlpha -> setBackground(component, GlassColor(bg.original, overlayAlpha, factor))
+                overlay && bg.paintAlpha != overlayAlpha -> setBackground(component, GlassColor(bg.original, overlayAlpha, factor))
                 !overlay && bg.factor != factor -> setBackground(component, Translucency.glass(bg.original, panelBackground(), factor))
             }
             bg.alpha < 255 -> return
@@ -403,6 +403,9 @@ class GlassManager : Disposable {
     /** Popups, tooltips and dialogs float over other glass: a stronger tint keeps them readable. */
     private fun tint(window: Window, config: GlassConfig): Color =
         Translucency.withAlphaPercent(panelBackground(), if (window is Frame) config.uiOpacity else config.popupOpacity)
+
+    private fun blur(window: Window, config: GlassConfig): Int =
+        if (window is Frame) config.blurRadius else config.popupBlurRadius
 
     private fun installColorOverrides(config: GlassConfig) {
         appliedThemeSignature = themeSignature()
