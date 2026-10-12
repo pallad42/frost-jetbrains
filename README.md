@@ -71,7 +71,8 @@ Quick toggle at any time: <kbd>View</kbd> → <kbd>Frost</kbd>.
 | Floating windows opacity | 95% | Popups, tooltips, notifications, dialogs, Settings |
 | Editor opacity | 0% | Extra editor background on top of the tint |
 | Sticky lines opacity | 85% | Background of sticky lines over scrolling code |
-| Blur radius | 5 | Blur of what is behind the window, 0 = off |
+| Blur radius | 5 | Blur of what is behind the main window, 0 = off |
+| Floating windows blur radius | 5 | Blur behind popups, dialogs, Settings, 0 = off |
 | Highlight opacity | 70% | Strength of coloured backgrounds |
 
 ## FAQ

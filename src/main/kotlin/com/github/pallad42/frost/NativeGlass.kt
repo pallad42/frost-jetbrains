@@ -10,8 +10,8 @@ import java.awt.Color
 import java.awt.Window
 
 /**
- * AppKit side of the effect: makes the NSWindow non-opaque, gives it a translucent tint as its
- * background colour and asks the window server to blur whatever is behind the window.
+ * AppKit side of the effect: makes the NSWindow non-opaque, gives it a translucent tint (window background for
+ * titled windows, content layer for borderless ones) and asks the window server to blur whatever is behind the window.
  * The blur is the same private CoreGraphics call Ghostty uses for `background-blur`.
  */
 internal object NativeGlass {
@@ -25,7 +25,7 @@ internal object NativeGlass {
      * (flicker), but JBR may also replace the content layer (window moved to another display, surface recreated),
      * which silently drops our tint - so the check compares against the live layer, on the main thread.
      */
-    private data class Applied(val layer: Long, val cgTint: Long, val tint: Int, val blurRadius: Int)
+    private data class Applied(val layer: Long, val cgTint: Long, val windowTint: Long, val tint: Int, val blurRadius: Int)
 
     private val applied = java.util.concurrent.ConcurrentHashMap<Long, Applied>()
 
@@ -38,25 +38,35 @@ internal object NativeGlass {
             val layer = contentLayer(nsWindow)
             val last = applied[key]
             if (!force && last != null && layer != null && last.layer == layer.toLong() && last.tint == tint.rgb &&
-                last.blurRadius == blurRadius && isStillOurs(layer, last.cgTint)
+                last.blurRadius == blurRadius && isStillOurs(nsWindow, layer, last)
             ) return@executeOnMainThread
             Foundation.invoke(nsWindow, "setOpaque:", false)
             setContentLayerOpaque(nsWindow, false)
-            Foundation.invoke(nsWindow, "setBackgroundColor:", Foundation.invoke("NSColor", "clearColor"))
-            val cgTint = setContentLayerTint(nsWindow, tint)
+            // Titled windows draw their background colour clipped to the rounded window shape; a tint on the content
+            // layer would fill the square corners outside it. Borderless windows (popups, tooltips) never draw the
+            // window background colour, so they keep the tint on the content layer.
+            val titled = isTitled(nsWindow)
+            Foundation.invoke(nsWindow, "setBackgroundColor:", if (titled) nsColor(tint) else Foundation.invoke("NSColor", "clearColor"))
+            val windowTint = Foundation.invoke(nsWindow, "backgroundColor").toLong()
+            val cgTint = setContentLayerTint(nsWindow, if (titled) null else tint)
             setBlurRadius(nsWindow, blurRadius)
             // Only remember windows that are really on screen; others get re-applied once they are shown.
-            if (isOnScreen(nsWindow)) applied[key] = Applied(layer?.toLong() ?: 0L, cgTint, tint.rgb, blurRadius)
+            if (isOnScreen(nsWindow)) applied[key] = Applied(layer?.toLong() ?: 0L, cgTint, windowTint, tint.rgb, blurRadius)
             else applied.remove(key)
             if (LOG.isDebugEnabled) LOG.debug("Frost: ${window.javaClass.simpleName} ${if (last == null) "glass applied" else "glass re-applied"} ${describe(nsWindow)}")
         }
     }
 
-    /** The layer still carries the tint we gave it and is still non-opaque. */
-    private fun isStillOurs(layer: ID, cgTint: Long): Boolean {
+    /** The window and its layer still carry the tint we gave them and the layer is still non-opaque. */
+    private fun isStillOurs(nsWindow: ID, layer: ID, last: Applied): Boolean {
         val opaque = (Foundation.invoke(layer, "isOpaque").toLong() and 0xff) != 0L
-        return !opaque && Foundation.invoke(layer, "backgroundColor").toLong() == cgTint
+        return !opaque && Foundation.invoke(layer, "backgroundColor").toLong() == last.cgTint &&
+            Foundation.invoke(nsWindow, "backgroundColor").toLong() == last.windowTint
     }
+
+    private fun isTitled(nsWindow: ID) = (Foundation.invoke(nsWindow, "styleMask").toLong() and NS_WINDOW_STYLE_MASK_TITLED) != 0L
+
+    private const val NS_WINDOW_STYLE_MASK_TITLED = 1L
 
     private fun contentLayer(nsWindow: ID): ID? {
         val contentView = Foundation.invoke(nsWindow, "contentView")
@@ -72,6 +82,7 @@ internal object NativeGlass {
             setBlurRadius(nsWindow, 0)
             setContentLayerTint(nsWindow, null)
             setContentLayerOpaque(nsWindow, true)
+            if (isTitled(nsWindow)) Foundation.invoke(nsWindow, "setBackgroundColor:", Foundation.invoke("NSColor", "windowBackgroundColor"))
         }
     }
 

@@ -15,6 +15,7 @@ class GlassConfigurable : Configurable {
     private lateinit var highlightOpacity: JSlider
     private lateinit var popupOpacity: JSlider
     private lateinit var stickyLinesOpacity: JSlider
+    private lateinit var popupBlurRadius: JSlider
 
     override fun getDisplayName() = "Frost"
 
@@ -38,6 +39,9 @@ class GlassConfigurable : Configurable {
             row("Blur radius:") {
                 blurRadius = slider(0, 60, 5, 15).applyToComponent { paintLabels = true }.component
             }
+            row("Floating windows blur radius:") {
+                popupBlurRadius = slider(0, 60, 5, 15).applyToComponent { paintLabels = true }.component
+            }
             row("Highlight opacity (%):") {
                 highlightOpacity = slider(0, 100, 5, 25).applyToComponent { paintLabels = true }.component
             }
@@ -46,17 +50,20 @@ class GlassConfigurable : Configurable {
                     .comment("Previews the default values; press Apply or OK to keep them.")
             }
             row {
-                comment("UI opacity is the tint of the main window, floating windows opacity of popups, tooltips, notifications and dialogs, editor opacity is added on top of it. Highlight opacity weakens coloured backgrounds (selection, file colours, current line...). Blur 0 = no blur.")
+                comment("UI opacity is the tint of the main window, floating windows opacity of popups, tooltips, notifications and dialogs, editor opacity is added on top of it. Highlight opacity weakens coloured backgrounds (selection, file colours, current line...). Blur radius is for the main window, floating windows blur radius for the rest. Blur 0 = no blur.")
             }
         }
         reset()
         enabled.addItemListener { preview() }
-        listOf(uiOpacity, popupOpacity, editorOpacity, stickyLinesOpacity, blurRadius, highlightOpacity).forEach { it.addChangeListener { preview() } }
+        listOf(uiOpacity, popupOpacity, editorOpacity, stickyLinesOpacity, blurRadius, popupBlurRadius, highlightOpacity).forEach { it.addChangeListener { preview() } }
         return content
     }
 
     private fun current() =
-        GlassConfig(enabled.isSelected, uiOpacity.value, editorOpacity.value, blurRadius.value, highlightOpacity.value, popupOpacity.value, stickyLinesOpacity.value)
+        GlassConfig(
+            enabled.isSelected, uiOpacity.value, editorOpacity.value, blurRadius.value, highlightOpacity.value,
+            popupOpacity.value, stickyLinesOpacity.value, popupBlurRadius.value,
+        )
 
     /**
      * Recolouring the whole UI is expensive: while a slider that needs it is dragged, only the cheap parts follow
@@ -85,6 +92,7 @@ class GlassConfigurable : Configurable {
         highlightOpacity.value = config.highlightOpacity
         popupOpacity.value = config.popupOpacity
         stickyLinesOpacity.value = config.stickyLinesOpacity
+        popupBlurRadius.value = config.popupBlurRadius
         GlassManager.getInstance().apply(config)
     }
 
