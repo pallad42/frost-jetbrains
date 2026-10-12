@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.pallad42.frost</id>
     <name>Frost</name>
-    <vendor>pallad42</vendor>
+    <vendor url="https://github.com/pallad42/frost-jetbrains">pallad42</vendor>
     <description><![CDATA[
         <p>Translucent, blurred IDE windows - frosted glass for your IDE, like <code>background-opacity</code> and
         <code>background-blur</code> in Ghostty or the transparent, blurred windows of iTerm2, Warp and VS Code

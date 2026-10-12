@@ -1,0 +1,58 @@
+name: Bug report
+description: Something looks off, stays solid, flickers or does not work
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Frost changes how the IDE looks, so a screenshot or a short screen recording helps the most.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: What looks wrong, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to see it
+      description: Which window, tool window, popup or action shows the problem?
+      placeholder: |
+        1. Open ...
+        2. Click ...
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot or recording
+      description: Drag and drop images or a video here.
+  - type: input
+    id: ide
+    attributes:
+      label: IDE and version
+      description: Help | About, e.g. IntelliJ IDEA 2026.2.3, PyCharm 2026.2.1
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: e.g. macOS 26.1
+    validations:
+      required: true
+  - type: input
+    id: theme
+    attributes:
+      label: Theme and editor colour scheme
+      placeholder: e.g. Islands Dark / Islands Dark
+  - type: input
+    id: frost
+    attributes:
+      label: Frost version and changed settings
+      description: Settings | Plugins shows the version; list sliders you changed from the defaults.
+      placeholder: e.g. 0.1.0, UI opacity 70%, blur radius 20
+  - type: textarea
+    id: other
+    attributes:
+      label: Anything else
+      description: Other plugins that change the UI, external monitors, full screen, Background Image...
