@@ -18,18 +18,18 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS-lightgrey" alt="macOS">
-  <img src="https://img.shields.io/badge/IntelliJ%20Platform-2026.2%2B-blue" alt="IntelliJ Platform 2026.2+">
+  <img src="https://img.shields.io/badge/JetBrains%20IDEs-2026.2%2B-blue" alt="JetBrains IDEs 2026.2+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/status-early%20access-orange" alt="Early access">
 </p>
 
 <p align="center">
-  <b>Early access:</b> tested on macOS with IntelliJ IDEA 2026.2.
-  Something looks off or stays solid? Please <a href="https://github.com/pallad42/frost/issues">open an issue</a>.
+  <b>Early access:</b> tested on macOS with IntelliJ IDEA 2026.2; other JetBrains IDEs 2026.2+ should work too.
+  Something looks off or stays solid? Please <a href="https://github.com/pallad42/frost-jetbrains/issues">open an issue</a>.
 </p>
 
 <p align="center">
-  <img src="docs/frost-editor-dark.png" width="900" alt="IntelliJ IDEA with Frost: translucent, blurred editor, project tree and terminal over the desktop">
+  <img src="docs/frost-editor-dark.png" width="900" alt="JetBrains IDE with Frost: translucent, blurred editor, project tree and terminal over the desktop">
 </p>
 <p align="center">
   <sub>Wallpaper: <a href="https://unsplash.com/photos/aerial-photography-of-body-of-water-surrounded-by-trees-p8hnTQOyzfU">aerial photography of a body of water surrounded by trees</a> by Jeremy Bishop on Unsplash</sub>
