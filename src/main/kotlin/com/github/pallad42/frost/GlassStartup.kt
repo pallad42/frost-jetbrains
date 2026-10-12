@@ -12,6 +12,9 @@ import com.intellij.openapi.startup.ProjectActivity
 class GlassStartup : ProjectActivity {
     override suspend fun execute(project: Project) {
         ApplicationManager.getApplication().invokeLater { GlassManager.getInstance().start() }
+        // Development aids, started only by `./gradlew runIde -Pfrost.selftest` / `-Pfrost.perftest`.
+        if (System.getProperty("frost.selftest") == "true") FrostSelfTest().run(project)
+        if (System.getProperty("frost.perftest") == "true") FrostPerfTest().run(project)
     }
 }
 
