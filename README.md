@@ -60,7 +60,7 @@ Quick toggle at any time: <kbd>View</kbd> → <kbd>Frost</kbd>.
 <kbd>Settings</kbd> → <kbd>Appearance & Behavior</kbd> → <kbd>Frost</kbd>. Every change previews live; Cancel reverts.
 
 <p align="center">
-  <img src="docs/frost-settings.png" width="640" alt="Frost settings page: opacity sliders, blur radius and Reset to Defaults">
+  <img src="docs/frost-settings.png" width="640" alt="Frost settings page: opacity sliders, main and floating windows blur radius and Reset to Defaults">
   <br>
   <sub>The Frost settings page</sub>
 </p>
