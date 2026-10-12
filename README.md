@@ -21,6 +21,7 @@
   <img src="https://img.shields.io/badge/JetBrains%20IDEs-2026.2%2B-blue" alt="JetBrains IDEs 2026.2+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/status-early%20access-orange" alt="Early access">
+  <a href="https://github.com/pallad42/frost-jetbrains/actions/workflows/build.yml"><img src="https://github.com/pallad42/frost-jetbrains/actions/workflows/build.yml/badge.svg" alt="Build"></a>
 </p>
 
 <p align="center">
@@ -54,9 +55,10 @@
 
 ## Install
 
-**From disk** (until it is on JetBrains Marketplace):
+**From disk** (Frost is waiting for JetBrains Marketplace approval):
 
-1. Download `frost-<version>.zip` from Releases, or build it with `./gradlew buildPlugin`.
+1. Download `frost-<version>.zip` from [Releases](https://github.com/pallad42/frost-jetbrains/releases), or build it
+   with `./gradlew buildPlugin`.
 2. <kbd>Settings</kbd> → <kbd>Plugins</kbd> → <kbd>⚙</kbd> → <kbd>Install Plugin from Disk…</kbd>
 3. Restart the IDE.
 
@@ -79,7 +81,7 @@ Quick toggle at any time: <kbd>View</kbd> → <kbd>Frost</kbd>.
 | Editor opacity | 0% | Extra editor background on top of the tint |
 | Sticky lines opacity | 85% | Background of sticky lines over scrolling code |
 | Blur radius | 5 | Blur of what is behind the main window, 0 = off |
-| Floating windows blur radius | 5 | Blur behind popups, dialogs, Settings, 0 = off |
+| Floating windows blur radius | same as Blur radius | Blur behind popups, dialogs, Settings, 0 = off |
 | Highlight opacity | 70% | Strength of coloured backgrounds |
 
 ## FAQ
@@ -125,13 +127,16 @@ grows with the window size and the blur radius. Lowering <b>Blur radius</b> (or 
 <details>
 <summary>The details, for the curious</summary>
 
-- The window peer is made per-pixel translucent; the native NSWindow gets a single tint on its Metal layer and a
+- The window peer is made per-pixel translucent and gets a single native tint - as the NSWindow background for
+  titled windows (macOS clips it to the rounded corners), on the content layer for borderless popups - plus a
   window-server blur (`CGSSetWindowBackgroundBlurRadius`, the same call Ghostty uses).
 - Every background colour - theme, components, editor colour schemes, terminal output - is replaced by a
   translucent version: neutral surfaces become fully transparent (stacked translucent fills would pulse), coloured
   ones keep their hue.
-- Overlays drawn inside the window (notifications, hints, balloons, sticky lines) get a near-solid background,
-  since there is no blur under them.
+- Overlays drawn inside the window (notifications, hints, balloons) use the floating windows opacity, sticky lines
+  their own: there is no blur under them, only other UI.
+- On a theme switch every colour is recomputed from the new theme; editors inherit the new theme's colours again
+  instead of getting back the previous ones.
 - Flicker fixes: `Window.paint` would wipe the whole window first (JDK-8303950), so the window keeps reporting itself
   opaque to Swing while its peer stays translucent; theme-change bursts are coalesced; native state is only re-sent
   when it really changed; loading-layer snapshots without alpha are skipped.
@@ -142,11 +147,21 @@ grows with the window size and the blur radius. Lowering <b>Blur radius</b> (or 
 ```
 ./gradlew buildPlugin      # build/distributions/frost-<version>.zip
 ./gradlew runIde           # sandbox IDE with the plugin
-./gradlew installPlugin    # install into your IDE (close it first)
-./gradlew verifyPlugin     # compatibility check
+./gradlew installPlugin    # install into your IntelliJ IDEA (close it first; see ideaConfigDir)
+./gradlew verifyPlugin     # compatibility check (Plugin Verifier)
 ```
 
-Requires the local IDE path in `gradle.properties` (`ideaPath`); Gradle provisions JDK 21 automatically.
+Builds against the IntelliJ IDEA at `ideaPath` in `gradle.properties` when it exists, otherwise downloads
+`platformVersion` (that is what CI does). Gradle provisions JDK 21 automatically.
+
+`./gradlew runIde -Pfrost.selftest` shows every kind of overlay and switches between light and dark theme, for a
+visual check before a release.
+
+### Releasing
+
+1. Bump `version` in `build.gradle.kts` and the change notes in `plugin.xml`, push.
+2. Publish a GitHub release tagged `v<version>`. CI builds and verifies the plugin, attaches the zip to the release
+   and uploads it to JetBrains Marketplace (needs the `PUBLISH_TOKEN` repository secret).
 
 ## Contributing
 
