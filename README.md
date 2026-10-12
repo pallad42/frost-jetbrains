@@ -20,6 +20,12 @@
   <img src="https://img.shields.io/badge/platform-macOS-lightgrey" alt="macOS">
   <img src="https://img.shields.io/badge/IntelliJ%20Platform-2026.2%2B-blue" alt="IntelliJ Platform 2026.2+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/status-early%20access-orange" alt="Early access">
+</p>
+
+<p align="center">
+  <b>Early access:</b> tested on macOS with IntelliJ IDEA 2026.2.
+  Something looks off or stays solid? Please <a href="https://github.com/pallad42/frost/issues">open an issue</a>.
 </p>
 
 <p align="center">
