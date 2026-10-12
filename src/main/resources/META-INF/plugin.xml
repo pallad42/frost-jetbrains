@@ -26,6 +26,10 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <p><b>0.1.1</b></p>
+        <ul>
+            <li>Fixed black UI after switching projects in the same window.</li>
+        </ul>
         <p><b>0.1.0</b> - first public release (early access).</p>
         <ul>
             <li>Translucent, blurred main window, popups and dialogs on macOS.</li>
