@@ -20,10 +20,12 @@
         <p>Settings: <b>Settings | Appearance &amp; Behavior | Frost</b>. Quick toggle: <b>View | Frost</b>.</p>
         <p><b>macOS only for now</b> - on Windows and Linux the plugin does nothing.
         Turn off <b>Appearance | Background Image</b> while using Frost: the two effects fight each other.</p>
+        <p><b>Early access:</b> tested on macOS with IntelliJ IDEA 2026.2. Something looks off or stays solid?
+        Please report it on <a href="https://github.com/pallad42/frost/issues">GitHub Issues</a>.</p>
     ]]></description>
 
     <change-notes><![CDATA[
-        <p><b>1.0.0</b> - first release.</p>
+        <p><b>0.1.0</b> - first public release (early access).</p>
         <ul>
             <li>Translucent, blurred main window, popups and dialogs on macOS.</li>
             <li>Separate opacity and blur for floating windows; editor, sticky lines and highlight opacity.</li>
