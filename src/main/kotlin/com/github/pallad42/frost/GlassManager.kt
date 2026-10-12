@@ -117,12 +117,20 @@ class GlassManager : Disposable {
                 val source = event.source as? Component ?: return@AWTEventListener
                 val flags = event.changeFlags
                 when {
+                    // Also when a window we already know gets a new peer: switching projects reuses the frame but
+                    // rebuilds its native window, created opaque because glass colours report full alpha.
                     source is Window && (flags and HierarchyEvent.DISPLAYABILITY_CHANGED.toLong()) != 0L && source.isDisplayable ->
-                        attach(source, config)
+                        attach(source, config, force = true)
                     (flags and HierarchyEvent.SHOWING_CHANGED.toLong()) != 0L && source.isShowing -> skipLoadingSnapshot(source)
                 }
             }
-            is ContainerEvent -> if (event.id == ContainerEvent.COMPONENT_ADDED) GlassStats.measure("componentAdded") { glassifyTree(event.child, config) }
+            is ContainerEvent -> if (event.id == ContainerEvent.COMPONENT_ADDED) {
+                GlassStats.measure("componentAdded") { glassifyTree(event.child, config) }
+                // Switching projects reuses the frame with a new root pane; IntelliJ then re-applies the root pane's
+                // client properties to the native window, which drops our tint and leaves the surface opaque (black).
+                val window = event.container as? Window
+                if (window != null && event.child is JRootPane) reapplyAfterRootPaneChange(window)
+            }
             is WindowEvent -> if (event.id == WindowEvent.WINDOW_ACTIVATED) refreshNative(event.window, config)
             is ComponentEvent -> when (event.id) {
                 ComponentEvent.COMPONENT_SHOWN -> {
@@ -245,16 +253,24 @@ class GlassManager : Disposable {
         if (window in windows && window.isDisplayable) NativeGlass.apply(window, tint(window, config), blur(window, config))
     }
 
-    private fun attach(window: Window, config: GlassConfig) = GlassStats.measure("attachWindow") { attachImpl(window, config) }
+    /** Runs after IntelliJ has finished updating the native window for the new root pane, and once more a moment later. */
+    private fun reapplyAfterRootPaneChange(window: Window) {
+        ApplicationManager.getApplication().invokeLater { active?.let { attach(window, it, force = true) } }
+        javax.swing.Timer(120) { active?.let { attach(window, it, force = true) } }.apply { isRepeats = false }.start()
+    }
 
-    private fun attachImpl(window: Window, config: GlassConfig) {
+    private fun attach(window: Window, config: GlassConfig, force: Boolean = false) =
+        GlassStats.measure("attachWindow") { attachImpl(window, config, force) }
+
+    private fun attachImpl(window: Window, config: GlassConfig, force: Boolean) {
         if (!window.isDisplayable) return
         try {
             // A new window may already carry a glass colour as background while its peer was created opaque
-            // (the colour reported full alpha then), so always switch windows we see for the first time.
+            // (the colour reported full alpha then), so always switch windows we see for the first time
+            // and windows whose native side was just recreated or reset ([force]).
             val first = window !in windows
             var switched = false
-            if (first || isReallyOpaque(window)) {
+            if (first || force || isReallyOpaque(window)) {
                 if (window.graphicsConfiguration?.device?.fullScreenWindow === window) return
                 if (first) {
                     windows[window] = window.background
