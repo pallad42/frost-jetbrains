@@ -30,7 +30,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/frost-editor-dark.png" width="900" alt="JetBrains IDE with Frost: translucent, blurred editor, project tree and terminal over the desktop">
+  <img src="docs/frost-editor-dark.png" width="900" alt="JetBrains IDE with Frost: translucent, blurred editor, project tree, terminal and code completion popup over the desktop">
 </p>
 <p align="center">
   <sub>Wallpaper: <a href="https://unsplash.com/photos/aerial-photography-of-body-of-water-surrounded-by-trees-p8hnTQOyzfU">aerial photography of a body of water surrounded by trees</a> by Jeremy Bishop on Unsplash</sub>
