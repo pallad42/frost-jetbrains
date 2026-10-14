@@ -2,27 +2,6 @@
     <id>com.github.pallad42.frost</id>
     <name>Frost</name>
     <vendor url="https://github.com/pallad42/frost-jetbrains">pallad42</vendor>
-    <description><![CDATA[
-        <p>Translucent, blurred IDE windows - frosted glass for your IDE. A transparent background with real blur,
-        without a background image.</p>
-        <ul>
-            <li>The whole UI is translucent: main window, editor, tool windows, terminal, toolbars, status bar,
-                popups, tooltips, notifications and dialogs.</li>
-            <li>Real window blur (frosted glass, acrylic-like) rendered by the macOS compositor, so it stays light on
-                resources.</li>
-            <li>The IDE paints exactly as designed: only the theme's background colours turn to glass, applied to the
-                finished pixels of each window. Text, icons, selection, file colours and search results stay as they
-                are, and other plugins' UI gets the same glass.</li>
-            <li>Light and dark themes, including switching theme while the IDE is running.</li>
-            <li>Live preview sliders: UI opacity, floating windows opacity, blur radius and floating
-                windows blur radius; Fast or Exact rendering; Reset to Defaults.</li>
-        </ul>
-        <p>Settings: <b>Settings | Appearance &amp; Behavior | Frost</b>. Quick toggle: <b>View | Frost</b>.</p>
-        <p><b>macOS only for now</b> - on Windows and Linux the plugin does nothing.</p>
-        <p><b>Early access:</b> tested on macOS with IntelliJ IDEA 2026.2; other JetBrains IDEs 2026.2+ (PyCharm,
-        WebStorm, PhpStorm, GoLand...) should work too. Something looks off or stays solid?
-        Please report it on <a href="https://github.com/pallad42/frost-jetbrains/issues">GitHub Issues</a>.</p>
-    ]]></description>
 
     <change-notes><![CDATA[
         <p><b>0.2.0</b></p>

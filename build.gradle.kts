@@ -1,6 +1,9 @@
+import org.jetbrains.changelog.markdownToHTML
+
 plugins {
     id("org.jetbrains.kotlin.jvm") version "2.4.21"
     id("org.jetbrains.intellij.platform") version "2.19.0"
+    id("org.jetbrains.changelog") version "2.5.0" apply false // only for markdownToHTML (the description)
 }
 
 group = "com.github.pallad42"
@@ -30,6 +33,14 @@ intellijPlatform {
     // Keep the sandbox IDE under build/ so opening this project in the sandbox does not index it.
     sandboxContainer = layout.buildDirectory.dir("idea-sandbox")
     pluginConfiguration {
+        // The Marketplace description is the README part between these markers.
+        description = providers.fileContents(layout.projectDirectory.file("README.md")).asText.map {
+            val start = "<!-- Plugin description -->"
+            val end = "<!-- Plugin description end -->"
+            val lines = it.lines()
+            if (start !in lines || end !in lines) throw GradleException("README.md has no $start ... $end section")
+            markdownToHTML(lines.subList(lines.indexOf(start) + 1, lines.indexOf(end)).joinToString("\n"))
+        }
         ideaVersion {
             sinceBuild = "262"
             untilBuild = provider { null }
