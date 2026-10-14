@@ -4,6 +4,11 @@
     <vendor url="https://github.com/pallad42/frost-jetbrains">pallad42</vendor>
 
     <change-notes><![CDATA[
+        <p><b>0.2.1</b></p>
+        <ul>
+            <li>New icon: a snowflake over frosted glass.</li>
+            <li>Updated plugin description.</li>
+        </ul>
         <p><b>0.2.0</b></p>
         <ul>
             <li>New engine: the glass is applied by macOS to the finished pixels of each window, the IDE itself paints
