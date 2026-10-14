@@ -44,9 +44,14 @@
 
 ## Features
 
-- **The whole IDE turns to glass** - main window, tool windows, toolbars, status bar, popups, tooltips,
-  notifications and dialogs.
-- **Real blur, rendered by macOS.** The window server blurs whatever is behind the IDE.
+<!-- Plugin description -->
+Translucent, blurred IDE windows - frosted glass for your JetBrains IDE. A transparent background with real blur,
+without a background image.
+
+- **The whole IDE turns to glass** - main window, editor, tool windows, terminal, toolbars, status bar, popups,
+  tooltips, notifications and dialogs.
+- **Real blur, rendered by macOS.** The window server blurs whatever is behind the IDE (frosted glass, acrylic-like),
+  so it stays light on resources.
 - **The IDE paints exactly as designed.** Frost does not change a single colour or component: only the theme's
   background colours turn to glass, applied to the finished pixels of each window. Text, icons, selection, file
   colours, search results and terminal output stay as they are; popups, menus and dialogs stay solid enough to read.
@@ -54,11 +59,24 @@
   editors, tool windows, tables, the Markdown preview (an embedded browser), other plugins' UI and animations all get
   the same glass.
 - **Light and dark themes.** Works with both, including switching theme while the IDE is running.
-- **Tune it live.** Opacity and blur sliders with instant preview and Reset to Defaults.
+- **Tune it live.** UI opacity, floating windows opacity and blur sliders with instant preview, Fast or Exact
+  rendering, and Reset to Defaults.
+
+Settings: **Settings | Appearance & Behavior | Frost**. Quick toggle: **View | Frost**.
+
+**macOS only for now** - on Windows and Linux the plugin does nothing.
+
+**Early access:** tested on macOS with IntelliJ IDEA 2026.2; other JetBrains IDEs 2026.2+ (PyCharm, WebStorm,
+PhpStorm, GoLand...) should work too. Something looks off or stays solid? Please report it on
+[GitHub Issues](https://github.com/pallad42/frost-jetbrains/issues).
+<!-- Plugin description end -->
 
 ## Install
 
-**From disk** (Frost is waiting for JetBrains Marketplace approval):
+**From JetBrains Marketplace:** <kbd>Settings</kbd> → <kbd>Plugins</kbd> → <kbd>Marketplace</kbd>, search for **Frost**,
+Install and restart the IDE.
+
+**From disk:**
 
 1. Download `frost-<version>.zip` from [Releases](https://github.com/pallad42/frost-jetbrains/releases), or build it
    with `./gradlew buildPlugin`.
@@ -167,7 +185,8 @@ visual check before a release. `./gradlew runIde -Pfrost.driver=<dir>` executes 
 
 ### Releasing
 
-1. Bump `version` in `build.gradle.kts` and the change notes in `plugin.xml`, push.
+1. Bump `version` in `build.gradle.kts` and the change notes in `plugin.xml`, push. The Marketplace description is
+   built from the part of this README between the `Plugin description` markers.
 2. Publish a GitHub release tagged `v<version>`. CI builds and verifies the plugin, attaches the zip to the release
    and uploads it to JetBrains Marketplace (needs the `PUBLISH_TOKEN` repository secret).
 
