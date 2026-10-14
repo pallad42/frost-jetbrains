@@ -102,11 +102,14 @@ class GlassManager : Disposable {
     private fun restoreLegacyRegistry() {
         val state = GlassSettings.getInstance().state
         if (state.legacyRegistryRestored) return
-        for (value in Registry.getAll()) {
-            if (value.key !in LEGACY_REGISTRY_KEYS || !value.isChangedFromDefault() || value.asBoolean()) continue
-            runCatching { value.resetToDefault() }
-                .onSuccess { log.info("Frost: restored registry key ${value.key} switched off by an older Frost") }
-                .onFailure { log.warn("Frost: cannot restore registry key ${value.key}", it) }
+        for (key in LEGACY_REGISTRY_KEYS) {
+            runCatching {
+                val value = Registry.get(key)
+                if (value.isChangedFromDefault() && !value.asBoolean()) {
+                    value.resetToDefault()
+                    log.info("Frost: restored registry key $key switched off by an older Frost")
+                }
+            }.onFailure { log.warn("Frost: cannot restore registry key $key", it) }
         }
         state.legacyRegistryRestored = true
     }
