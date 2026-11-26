@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.github.pallad42"
-version = "0.2.1"
+version = "0.2.2"
 
 repositories {
     mavenCentral()
@@ -23,10 +23,26 @@ dependencies {
     intellijPlatform {
         if (localIde != null) local(localIde) else intellijIdea(providers.gradleProperty("platformVersion").get())
     }
+    // Since 2026.3 JNA is no longer part of the platform but of the bundled JNA plugin (see plugin.xml): compile against
+    // the same version directly, the IDE provides it at runtime either way.
+    compileOnly("net.java.dev.jna:jna:5.19.1")
 }
 
 kotlin {
     jvmToolchain(21)
+}
+
+// Local development aids (src/dev: self test, perf test, driver; see FrostDevHooks) go into the plugin jar only when
+// runIde is among the requested tasks, so the published zip has none of them (nor their deprecated API usages).
+val dev: SourceSet by sourceSets.creating {
+    compileClasspath += sourceSets.main.get().output + sourceSets.main.get().compileClasspath
+}
+kotlin.target.compilations.named("dev") { associateWith(kotlin.target.compilations.getByName("main")) }
+val requestedTasks = gradle.startParameter.taskNames.map { it.substringAfterLast(':') }
+if ("runIde" in requestedTasks) {
+    val release = listOf("buildPlugin", "verifyPlugin", "signPlugin", "publishPlugin", "installPlugin")
+    if (requestedTasks.any { it in release }) throw GradleException("Run runIde separately from ${release.joinToString()}")
+    tasks.named<org.gradle.api.tasks.bundling.Zip>("composedJar") { from(dev.output) }
 }
 
 intellijPlatform {

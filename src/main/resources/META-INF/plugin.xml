@@ -4,6 +4,11 @@
     <vendor url="https://github.com/pallad42/frost-jetbrains">pallad42</vendor>
 
     <change-notes><![CDATA[
+        <p><b>0.2.2</b></p>
+        <ul>
+            <li>Fixed a startup crash on IntelliJ 2026.3 ("A native pointer is required").</li>
+            <li>Builds against the bundled JNA plugin of 2026.3.</li>
+        </ul>
         <p><b>0.2.1</b></p>
         <ul>
             <li>New icon: a snowflake over frosted glass.</li>
@@ -35,6 +40,8 @@
     ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
+    <!-- 2026.3+: JNA lives in this bundled plugin; up to 2026.2 it is part of the platform and the plugin does not exist. -->
+    <depends optional="true" config-file="frost-jna.xml">com.intellij.modules.jna</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <applicationConfigurable parentId="appearance"

@@ -7,6 +7,7 @@ import com.intellij.ui.mac.foundation.MacUtil
 import com.sun.jna.Function
 import com.sun.jna.Memory
 import com.sun.jna.NativeLibrary
+import com.sun.jna.Pointer
 import java.awt.Window
 
 /**
@@ -40,7 +41,7 @@ internal object NativeGlass {
         val bytes = values.size.toLong() * 4
         val memory = Memory(bytes)
         memory.write(0, values, 0, values.size)
-        val data = Foundation.invoke(Foundation.invoke("NSData", "alloc"), "initWithBytes:length:", memory, bytes)
+        val data = Foundation.invoke(Foundation.invoke("NSData", "alloc"), "initWithBytes:length:", memory.id(), bytes)
         return Cube(data.toLong(), matrix)
     }
 
@@ -126,7 +127,7 @@ internal object NativeGlass {
         bytes.write(0, m, 0, 20)
         val type = Memory(64)
         type.setString(0, "{CAColorMatrix=ffffffffffffffffffff}")
-        val value = Foundation.invoke("NSValue", "valueWithBytes:objCType:", bytes, type)
+        val value = Foundation.invoke("NSValue", "valueWithBytes:objCType:", bytes.id(), type.id())
         Foundation.invoke(filter, "setValue:forKey:", value, Foundation.nsString("inputColorMatrix"))
         Foundation.invoke(filter, "setName:", Foundation.nsString(filterName(cube.data, exact = false)))
         return filter
@@ -196,6 +197,9 @@ internal object NativeGlass {
     }
 
     private fun ID.isNil() = toLong() == 0L
+
+    /** Native memory as a plain address: since 2026.3 Foundation calls go through Java FFM and accept no JNA pointers. */
+    private fun Memory.id() = ID(Pointer.nativeValue(this))
 
     private fun nsWindowOf(window: Window): ID? {
         val id = runCatching { MacUtil.getWindowFromJavaWindow(window) }.getOrNull()

@@ -17,6 +17,7 @@
 </p>
 
 <p align="center">
+  <a href="https://plugins.jetbrains.com/plugin/35016-frost"><img src="https://img.shields.io/jetbrains/plugin/v/35016-frost?label=Marketplace" alt="JetBrains Marketplace"></a>
   <img src="https://img.shields.io/badge/platform-macOS-lightgrey" alt="macOS">
   <img src="https://img.shields.io/badge/JetBrains%20IDEs-2026.2%2B-blue" alt="JetBrains IDEs 2026.2+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
@@ -73,7 +74,7 @@ PhpStorm, GoLand...) should work too. Something looks off or stays solid? Please
 
 ## Install
 
-**From JetBrains Marketplace:** <kbd>Settings</kbd> → <kbd>Plugins</kbd> → <kbd>Marketplace</kbd>, search for **Frost**,
+**From [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/35016-frost):** <kbd>Settings</kbd> → <kbd>Plugins</kbd> → <kbd>Marketplace</kbd>, search for **Frost**,
 Install and restart the IDE.
 
 **From disk:**
@@ -182,13 +183,16 @@ Builds against the IntelliJ IDEA at `ideaPath` in `gradle.properties` when it ex
 `./gradlew runIde -Pfrost.selftest` shows every kind of overlay and switches between light and dark theme, for a
 visual check before a release. `./gradlew runIde -Pfrost.driver=<dir>` executes commands written to `<dir>/cmd.txt`
 (open a file, show a context menu, hover its items, take a screenshot of the IDE's windows) - see `FrostDriver`.
+These development aids live in `src/dev` and are compiled into the plugin only for `runIde`, never into the release zip.
 
 ### Releasing
 
 1. Bump `version` in `build.gradle.kts` and the change notes in `plugin.xml`, push. The Marketplace description is
    built from the part of this README between the `Plugin description` markers.
-2. Publish a GitHub release tagged `v<version>`. CI builds and verifies the plugin, attaches the zip to the release
-   and uploads it to JetBrains Marketplace (needs the `PUBLISH_TOKEN` repository secret).
+2. Publish a GitHub release tagged `v<version>`. That is the whole deployment: the Release workflow
+   (`.github/workflows/release.yml`) builds and verifies the plugin, attaches the zip to the release and publishes it
+   to [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/35016-frost) with the `PUBLISH_TOKEN` repository
+   secret. No manual upload to Marketplace is needed.
 
 ## Contributing
 

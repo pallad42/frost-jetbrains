@@ -12,9 +12,26 @@ import com.intellij.openapi.startup.ProjectActivity
 class GlassStartup : ProjectActivity {
     override suspend fun execute(project: Project) {
         ApplicationManager.getApplication().invokeLater { GlassManager.getInstance().start() }
-        // Development aids, started only by `./gradlew runIde -Pfrost.selftest` / `-Pfrost.perftest`.
-        if (System.getProperty("frost.selftest") == "true") FrostSelfTest().run(project)
-        if (System.getProperty("frost.perftest") == "true") FrostPerfTest().run(project)
+        FrostDevHooks.instance?.projectOpened(project)
+    }
+}
+
+/**
+ * Local development aids (self test, perf test, driver in src/dev) are compiled into the plugin only for
+ * `./gradlew runIde`, never into the published zip: there this finds no implementation and does nothing.
+ */
+interface FrostDevHooks {
+    suspend fun projectOpened(project: Project)
+    fun appFrameCreated()
+
+    companion object {
+        val instance: FrostDevHooks? by lazy {
+            try {
+                Class.forName("com.github.pallad42.frost.FrostDev").getDeclaredConstructor().newInstance() as FrostDevHooks
+            } catch (_: ClassNotFoundException) {
+                null
+            }
+        }
     }
 }
 
@@ -22,8 +39,7 @@ class GlassAppListener : AppLifecycleListener {
     override fun appFrameCreated(commandLineArgs: MutableList<String>) {
         ApplicationManager.getApplication().invokeLater {
             GlassManager.getInstance().start()
-            // Development aid, started only by `./gradlew runIde -Pfrost.driver=<dir>`.
-            System.getProperty("frost.driver")?.let { FrostDriver(java.io.File(it)).start() }
+            FrostDevHooks.instance?.appFrameCreated()
         }
     }
 
